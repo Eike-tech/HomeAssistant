@@ -1,36 +1,30 @@
 ARG BUILD_FROM
-FROM node:22-alpine AS base
+FROM ${BUILD_FROM}
 
-# --- Dependencies ---
-FROM base AS deps
+# Install Node.js and npm
+RUN apk add --no-cache nodejs npm
+
 WORKDIR /app
+
+# Install dependencies
 COPY package.json package-lock.json ./
 RUN npm ci
 
-# --- Build with placeholders (replaced at runtime) ---
-FROM base AS builder
-WORKDIR /app
-COPY --from=deps /app/node_modules ./node_modules
-COPY package.json package-lock.json next.config.ts tsconfig.json ./
+# Copy source
 COPY src ./src
 COPY public ./public
+COPY next.config.ts tsconfig.json ./
 
+# Build with placeholders (replaced at runtime by run.sh)
 ENV NEXT_PUBLIC_HASS_URL=__HASS_URL_PLACEHOLDER__
 ENV NEXT_PUBLIC_HASS_TOKEN=__HASS_TOKEN_PLACEHOLDER__
-
 RUN npm run build
 
-# --- Runtime (HA base image with Node.js) ---
-FROM ${BUILD_FROM}
+# Clean up build dependencies to save space
+RUN rm -rf node_modules src
+RUN cp -r .next/standalone/* . && cp -r .next/static .next/static
 
-RUN apk add --no-cache nodejs
-
-WORKDIR /app
-
-COPY --from=builder /app/public ./public
-COPY --from=builder /app/.next/standalone ./
-COPY --from=builder /app/.next/static ./.next/static
-
+# Copy startup script
 COPY run.sh /run.sh
 RUN chmod a+x /run.sh
 
