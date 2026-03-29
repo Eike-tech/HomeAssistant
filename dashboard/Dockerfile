@@ -1,17 +1,19 @@
-ARG BUILD_FROM=ghcr.io/home-assistant/amd64-base:3.20
+ARG BUILD_FROM
 FROM node:22-alpine AS base
 
-# --- Clone & install dependencies ---
+# --- Dependencies ---
 FROM base AS deps
-RUN apk add --no-cache git
 WORKDIR /app
-RUN git clone --depth 1 https://github.com/Eike-tech/HomeAssistant.git .
+COPY package.json package-lock.json ./
 RUN npm ci
 
 # --- Build with placeholders (replaced at runtime) ---
 FROM base AS builder
 WORKDIR /app
-COPY --from=deps /app ./
+COPY --from=deps /app/node_modules ./node_modules
+COPY package.json package-lock.json next.config.ts tsconfig.json ./
+COPY src ./src
+COPY public ./public
 
 ENV NEXT_PUBLIC_HASS_URL=__HASS_URL_PLACEHOLDER__
 ENV NEXT_PUBLIC_HASS_TOKEN=__HASS_TOKEN_PLACEHOLDER__
