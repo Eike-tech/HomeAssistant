@@ -11,7 +11,7 @@ COPY next.config.ts tsconfig.json postcss.config.mjs ./
 # Build with placeholders (replaced at runtime by run.sh)
 ENV NEXT_PUBLIC_HASS_URL=__HASS_URL_PLACEHOLDER__
 ENV NEXT_PUBLIC_HASS_TOKEN=__HASS_TOKEN_PLACEHOLDER__
-ENV NEXT_PUBLIC_BASE_PATH=/__HA_INGRESS__
+ENV NEXT_PUBLIC_ASSET_PREFIX=/__HA_INGRESS__
 RUN npm run build
 
 # --- Runtime: lightweight Alpine ---
