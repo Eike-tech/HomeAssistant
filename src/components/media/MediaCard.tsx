@@ -3,12 +3,14 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ENTITIES } from "@/lib/hass/entities";
 import { MediaPlayer } from "./MediaPlayer";
+import { SpotifyPlayer } from "./SpotifyPlayer";
 
 const zones = [
   { id: ENTITIES.media.wohnzimmer, name: "Wohnzimmer" },
   { id: ENTITIES.media.buro, name: "Büro" },
   { id: ENTITIES.media.schlafzimmer, name: "Schlafzimmer" },
   { id: ENTITIES.media.bad, name: "Bad" },
+  { id: ENTITIES.car.mediaPlayer, name: "Tesla Crest" },
 ];
 
 export function MediaCard() {
@@ -20,6 +22,12 @@ export function MediaCard() {
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
+        {/* Spotify Player with speaker selector */}
+        <SpotifyPlayer />
+
+        <div className="border-t border-white/[0.05]" />
+
+        {/* Individual zones */}
         {zones.map((zone, i) => (
           <div key={zone.id}>
             {i > 0 && <div className="border-t border-white/[0.05] mb-4" />}
