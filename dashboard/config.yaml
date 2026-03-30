@@ -3,9 +3,11 @@ version: "1.0.0"
 slug: dashboard
 description: Custom Home Assistant Dashboard with energy, climate, car, and media controls
 url: https://github.com/Eike-tech/HomeAssistant
+image: ghcr.io/eike-tech/homeassistant-dashboard-{arch}
 arch:
   - aarch64
   - amd64
+init: false
 ingress: true
 ingress_port: 3000
 panel_icon: mdi:view-dashboard

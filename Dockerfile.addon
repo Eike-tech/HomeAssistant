@@ -1,0 +1,44 @@
+FROM node:22-alpine AS builder
+WORKDIR /app
+
+COPY package.json package-lock.json ./
+RUN npm ci
+
+COPY src ./src
+COPY public ./public
+COPY next.config.ts tsconfig.json postcss.config.mjs ./
+
+# Build with placeholders (replaced at runtime by run.sh)
+ENV NEXT_PUBLIC_HASS_URL=__HASS_URL_PLACEHOLDER__
+ENV NEXT_PUBLIC_HASS_TOKEN=__HASS_TOKEN_PLACEHOLDER__
+ENV NEXT_PUBLIC_BASE_PATH=/__HA_INGRESS__
+RUN npm run build
+
+# --- Runtime: Alpine with bashio for HA Add-on compatibility ---
+FROM alpine:3.20 AS runner
+
+# Install Node.js and bashio
+RUN apk add --no-cache nodejs bash curl jq
+
+# Install bashio
+ARG BASHIO_VERSION=0.16.2
+RUN curl -sL "https://github.com/hassio-addons/bashio/archive/v${BASHIO_VERSION}.tar.gz" | tar xz \
+    && mv "bashio-${BASHIO_VERSION}/lib" /usr/lib/bashio \
+    && ln -s /usr/lib/bashio/bashio /usr/bin/bashio \
+    && rm -rf "bashio-${BASHIO_VERSION}"
+
+WORKDIR /app
+
+# Copy standalone build
+COPY --from=builder /app/.next/standalone ./
+COPY --from=builder /app/.next/static ./.next/static
+COPY --from=builder /app/public ./public
+
+# Copy run script
+COPY dashboard/run.sh /run.sh
+RUN chmod a+x /run.sh
+
+ENV NODE_ENV=production
+EXPOSE 3000
+
+CMD ["/run.sh"]

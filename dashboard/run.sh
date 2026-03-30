@@ -1,30 +1,62 @@
-#!/usr/bin/with-contenv bashio
-# shellcheck shell=bash
+#!/usr/bin/env bash
+set -e
 
-# Read configuration from Add-on options
-HASS_TOKEN=$(bashio::config 'hass_token')
+# Source bashio if available (HA Add-on environment)
+if [ -f /usr/lib/bashio/bashio ]; then
+    # shellcheck source=/dev/null
+    source /usr/lib/bashio/bashio
+    HAS_BASHIO=true
+else
+    HAS_BASHIO=false
+fi
 
-# If no token configured, try Supervisor API token
-if [ -z "$HASS_TOKEN" ]; then
+log() {
+    if [ "$HAS_BASHIO" = true ]; then
+        bashio::log.info "$1"
+    else
+        echo "[INFO] $1"
+    fi
+}
+
+# Read token from Add-on config, Supervisor, or environment
+HASS_TOKEN=""
+if [ "$HAS_BASHIO" = true ] && bashio::config.has_value 'hass_token'; then
+    HASS_TOKEN=$(bashio::config 'hass_token')
+fi
+if [ -z "$HASS_TOKEN" ] && [ -n "${SUPERVISOR_TOKEN:-}" ]; then
     HASS_TOKEN="${SUPERVISOR_TOKEN}"
 fi
 
-# HA internal URL (accessible from Add-on containers)
-HASS_URL="http://supervisor/core"
+# Determine HA URL
+if [ -n "${SUPERVISOR_TOKEN:-}" ]; then
+    HASS_URL="http://supervisor/core"
+else
+    HASS_URL="${NEXT_PUBLIC_HASS_URL:-http://homeassistant.local:8123}"
+fi
 
-bashio::log.info "Starting Dashboard..."
-bashio::log.info "Connecting to Home Assistant at ${HASS_URL}"
+# Get Ingress path from Supervisor API (e.g. /api/hassio/ingress/abc123)
+INGRESS_PATH=""
+if [ -n "${SUPERVISOR_TOKEN:-}" ]; then
+    INGRESS_PATH=$(curl -s -H "Authorization: Bearer ${SUPERVISOR_TOKEN}" \
+        http://supervisor/addons/self/info | jq -r '.data.ingress_entry // empty')
+    log "Ingress path: ${INGRESS_PATH}"
+fi
+
+log "Starting Dashboard..."
+log "Connecting to Home Assistant at ${HASS_URL}"
 
 # Replace build-time placeholders with runtime values in all JS files
+# INGRESS_PATH is injected so Next.js asset URLs resolve correctly through HA's ingress proxy
 find /app/.next -name "*.js" -exec sed -i \
     -e "s|__HASS_URL_PLACEHOLDER__|${HASS_URL}|g" \
     -e "s|__HASS_TOKEN_PLACEHOLDER__|${HASS_TOKEN}|g" \
+    -e "s|/__HA_INGRESS__|${INGRESS_PATH}|g" \
     {} +
 
-# Also replace in the standalone server
 find /app -maxdepth 1 -name "*.js" -exec sed -i \
     -e "s|__HASS_URL_PLACEHOLDER__|${HASS_URL}|g" \
     -e "s|__HASS_TOKEN_PLACEHOLDER__|${HASS_TOKEN}|g" \
+    -e "s|/__HA_INGRESS__|${INGRESS_PATH}|g" \
     {} +
 
 # Start the Next.js server

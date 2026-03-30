@@ -210,7 +210,8 @@ export function EnhancedSpotPriceChart() {
               <Bar
                 dataKey="price"
                 radius={[3, 3, 0, 0]}
-                shape={(props: Record<string, unknown>) => {
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                shape={(props: any) => {
                   const { x, y, width, height, payload } = props as { x: number; y: number; width: number; height: number; payload: PriceBar };
                   const isCurrent = payload?.isCurrent;
                   const color = payload?.color || "#fbbf24";
