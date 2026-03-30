@@ -18,6 +18,52 @@ const statusLabels: Record<string, string> = {
   error: "Fehler",
 };
 
+function MaintenanceIndicator({ label, remainingSeconds }: { label: string; remainingSeconds: number | null }) {
+  if (remainingSeconds === null) return null;
+  const totalSeconds = label === "Filter" ? 150 * 3600 : label === "Sensor" ? 30 * 3600 : 300 * 3600;
+  const pct = Math.min(100, Math.max(0, (remainingSeconds / totalSeconds) * 100));
+  const days = Math.round(remainingSeconds / 86400);
+  const isLow = pct < 15;
+
+  return (
+    <div className="flex items-center gap-2">
+      <span className="text-[11px] text-muted-foreground w-16 shrink-0">{label}</span>
+      <div className="flex-1 h-1 rounded-full bg-white/[0.06] overflow-hidden">
+        <div
+          className={`h-full rounded-full transition-all ${isLow ? "bg-red-400" : pct < 30 ? "bg-orange-400" : "bg-green-400/60"}`}
+          style={{ width: `${pct}%` }}
+        />
+      </div>
+      <span className={`text-[10px] tabular-nums w-8 text-right ${isLow ? "text-red-400" : "text-muted-foreground"}`}>
+        {days}d
+      </span>
+    </div>
+  );
+}
+
+function DockStatus() {
+  const freshWater = useEntityState(ENTITIES.vacuum.dockFreshWater);
+  const dirtyWater = useEntityState(ENTITIES.vacuum.dockDirtyWater);
+  const dockError = useEntityState(ENTITIES.vacuum.dockError);
+
+  const hasIssue = freshWater === "on" || dirtyWater === "on" || (dockError && dockError !== "ok");
+  if (!hasIssue) return null;
+
+  return (
+    <div className="flex flex-wrap gap-1.5">
+      {freshWater === "on" && (
+        <span className="text-[10px] rounded-full px-2 py-0.5 bg-blue-400/15 text-blue-400">Frischwasser leer</span>
+      )}
+      {dirtyWater === "on" && (
+        <span className="text-[10px] rounded-full px-2 py-0.5 bg-orange-400/15 text-orange-400">Schmutzwasser voll</span>
+      )}
+      {dockError && dockError !== "ok" && (
+        <span className="text-[10px] rounded-full px-2 py-0.5 bg-red-400/15 text-red-400">Dock: {dockError}</span>
+      )}
+    </div>
+  );
+}
+
 export function VacuumCard() {
   const { connection } = useHass();
   const vacuumState = useEntityState(ENTITIES.vacuum.entity);
@@ -26,6 +72,10 @@ export function VacuumCard() {
   const currentRoom = useEntityState(ENTITIES.vacuum.currentRoom);
   const cleaningArea = useEntityNumericState(ENTITIES.vacuum.cleaningArea);
   const cleaningTime = useEntityNumericState(ENTITIES.vacuum.cleaningTime);
+  const filterRemaining = useEntityNumericState(ENTITIES.vacuum.filterRemaining);
+  const mainBrush = useEntityNumericState(ENTITIES.vacuum.mainBrushRemaining);
+  const sideBrush = useEntityNumericState(ENTITIES.vacuum.sideBrushRemaining);
+  const sensorRemaining = useEntityNumericState(ENTITIES.vacuum.sensorRemaining);
 
   const displayStatus = statusLabels[status ?? ""] ?? statusLabels[vacuumState ?? ""] ?? status ?? vacuumState ?? "—";
   const isCleaning = vacuumState === "cleaning" || status === "cleaning";
@@ -57,6 +107,18 @@ export function VacuumCard() {
           {currentRoom && <span>{currentRoom}</span>}
           {cleaningArea !== null && <span>{formatArea(cleaningArea)}</span>}
           {cleaningTime !== null && cleaningTime > 0 && <span>{formatDuration(cleaningTime)}</span>}
+        </div>
+
+        {/* Dock Status Warnings */}
+        <DockStatus />
+
+        {/* Maintenance Indicators */}
+        <div className="space-y-1.5">
+          <span className="text-[11px] uppercase tracking-wider text-muted-foreground">Wartung</span>
+          <MaintenanceIndicator label="Filter" remainingSeconds={filterRemaining} />
+          <MaintenanceIndicator label="Hauptbürste" remainingSeconds={mainBrush} />
+          <MaintenanceIndicator label="Seitenbürste" remainingSeconds={sideBrush} />
+          <MaintenanceIndicator label="Sensor" remainingSeconds={sensorRemaining} />
         </div>
 
         {/* Controls */}

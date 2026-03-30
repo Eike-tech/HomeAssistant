@@ -13,6 +13,9 @@ const scenes = [
   { id: ENTITIES.scenes.nachtlicht, label: "Nacht", color: "bg-indigo-400/15 text-indigo-400 hover:bg-indigo-400/25" },
   { id: ENTITIES.scenes.energieTanken, label: "Energie", color: "bg-green-400/15 text-green-400 hover:bg-green-400/25" },
   { id: ENTITIES.scenes.nordlichter, label: "Nordlichter", color: "bg-teal-400/15 text-teal-400 hover:bg-teal-400/25" },
+  { id: ENTITIES.scenes.fruhlingsbluten, label: "Frühling", color: "bg-pink-400/15 text-pink-400 hover:bg-pink-400/25" },
+  { id: ENTITIES.scenes.sonnenuntergang, label: "Savanne", color: "bg-rose-400/15 text-rose-400 hover:bg-rose-400/25" },
+  { id: ENTITIES.scenes.tropendammerung, label: "Tropen", color: "bg-emerald-400/15 text-emerald-400 hover:bg-emerald-400/25" },
 ];
 
 export function SceneSelector() {

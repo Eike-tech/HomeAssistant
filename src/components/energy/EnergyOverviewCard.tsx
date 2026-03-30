@@ -61,6 +61,30 @@ function ConsumerRow({ entity, name }: { entity: string; name: string }) {
   );
 }
 
+function Co2Badge() {
+  const co2 = useEntityNumericState(ENTITIES.energy.co2Intensity);
+  const fossil = useEntityNumericState(ENTITIES.energy.fossilShare);
+
+  if (co2 === null && fossil === null) return null;
+
+  const greenShare = fossil !== null ? Math.round(100 - fossil) : null;
+  const isGreen = (greenShare ?? 0) >= 50;
+
+  return (
+    <div className={`flex items-center gap-2 rounded-xl px-3 py-2 ${isGreen ? "bg-green-400/10" : "bg-orange-400/10"}`}>
+      <div className={`h-2 w-2 rounded-full ${isGreen ? "bg-green-400" : "bg-orange-400"}`} />
+      <div className="flex flex-col">
+        <span className={`text-xs font-medium ${isGreen ? "text-green-400" : "text-orange-400"}`}>
+          {greenShare !== null ? `${greenShare}% erneuerbar` : "—"}
+        </span>
+        {co2 !== null && (
+          <span className="text-[10px] text-muted-foreground tabular-nums">{Math.round(co2)} g CO₂/kWh</span>
+        )}
+      </div>
+    </div>
+  );
+}
+
 export function EnergyOverviewCard() {
   const powerEntity = useEntity(ENTITIES.energy.power);
   const power = useEntityNumericState(ENTITIES.energy.power);
@@ -91,6 +115,9 @@ export function EnergyOverviewCard() {
           </span>
           <p className="text-xs text-muted-foreground mt-1">Gesamtverbrauch</p>
         </div>
+
+        {/* CO2 / Green Energy Badge */}
+        <Co2Badge />
 
         {/* Individual Consumers */}
         <div className="space-y-2.5">
