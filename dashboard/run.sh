@@ -5,27 +5,37 @@ log() {
     echo "[INFO] $1"
 }
 
-# Read token: try Supervisor API for add-on config, then SUPERVISOR_TOKEN
+# Read long-lived token from add-on config
 HASS_TOKEN=""
 if [ -n "${SUPERVISOR_TOKEN:-}" ]; then
-    # Try to read token from add-on options via Supervisor API
     ADDON_TOKEN=$(curl -s -H "Authorization: Bearer ${SUPERVISOR_TOKEN}" \
         http://supervisor/addons/self/options | jq -r '.data.hass_token // empty' 2>/dev/null || true)
     if [ -n "$ADDON_TOKEN" ]; then
         HASS_TOKEN="$ADDON_TOKEN"
-    else
-        HASS_TOKEN="${SUPERVISOR_TOKEN}"
     fi
 fi
 
-# Determine HA URL
+# Get HA external URL from Core API (this is what the browser can reach)
+HASS_URL=""
 if [ -n "${SUPERVISOR_TOKEN:-}" ]; then
-    HASS_URL="http://supervisor/core"
-else
+    HASS_URL=$(curl -s -H "Authorization: Bearer ${SUPERVISOR_TOKEN}" \
+        http://supervisor/core/api/config | jq -r '.external_url // empty' 2>/dev/null || true)
+    # Fallback to internal URL if no external URL configured
+    if [ -z "$HASS_URL" ]; then
+        HASS_URL=$(curl -s -H "Authorization: Bearer ${SUPERVISOR_TOKEN}" \
+            http://supervisor/core/api/config | jq -r '.internal_url // empty' 2>/dev/null || true)
+    fi
+fi
+
+# Fallback for non-addon environments
+if [ -z "$HASS_URL" ]; then
     HASS_URL="${NEXT_PUBLIC_HASS_URL:-http://homeassistant.local:8123}"
 fi
 
-# Get Ingress path from Supervisor API (e.g. /api/hassio/ingress/abc123)
+# Remove trailing slash
+HASS_URL="${HASS_URL%/}"
+
+# Get Ingress path from Supervisor API
 INGRESS_PATH=""
 if [ -n "${SUPERVISOR_TOKEN:-}" ]; then
     INGRESS_PATH=$(curl -s -H "Authorization: Bearer ${SUPERVISOR_TOKEN}" \
@@ -34,9 +44,10 @@ if [ -n "${SUPERVISOR_TOKEN:-}" ]; then
 fi
 
 log "Starting Dashboard..."
-log "Connecting to Home Assistant at ${HASS_URL}"
+log "HA URL for browser: ${HASS_URL}"
+log "Token configured: $([ -n "$HASS_TOKEN" ] && echo 'yes' || echo 'NO - configure hass_token in add-on settings!')"
 
-# Replace build-time placeholders with runtime values in all relevant files
+# Replace build-time placeholders with runtime values
 find /app/.next -type f \( -name "*.js" -o -name "*.html" -o -name "*.json" -o -name "*.rsc" \) -exec sed -i \
     -e "s|__HASS_URL_PLACEHOLDER__|${HASS_URL}|g" \
     -e "s|__HASS_TOKEN_PLACEHOLDER__|${HASS_TOKEN}|g" \
