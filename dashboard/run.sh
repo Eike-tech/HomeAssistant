@@ -9,7 +9,7 @@ log() {
 HASS_TOKEN=""
 if [ -n "${SUPERVISOR_TOKEN:-}" ]; then
     ADDON_TOKEN=$(curl -s -H "Authorization: Bearer ${SUPERVISOR_TOKEN}" \
-        http://supervisor/addons/self/options | jq -r '.data.hass_token // empty' 2>/dev/null || true)
+        http://supervisor/addons/self/info | jq -r '.data.options.hass_token // empty' 2>/dev/null || true)
     if [ -n "$ADDON_TOKEN" ]; then
         HASS_TOKEN="$ADDON_TOKEN"
     fi
