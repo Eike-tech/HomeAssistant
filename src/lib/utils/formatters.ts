@@ -35,9 +35,8 @@ export function formatHumidity(percent: number | null): string {
   return `${Math.round(percent)}%`;
 }
 
-export function formatRange(meters: number | null): string {
-  if (meters === null) return "—";
-  const km = meters / 1000;
+export function formatRange(km: number | null): string {
+  if (km === null) return "—";
   return `${Math.round(km)} km`;
 }
 

@@ -22,9 +22,17 @@ interface PriceDataPoint {
 
 export function SpotPriceChart() {
   const spotEntity = useEntity(ENTITIES.energy.spotPrice);
-  const avgPrice = useEntityNumericState(ENTITIES.energy.spotAverage);
-  const lowestPrice = useEntityNumericState(ENTITIES.energy.spotLowest);
-  const highestPrice = useEntityNumericState(ENTITIES.energy.spotHighest);
+  const tibberEntity = useEntity(ENTITIES.energy.tibberPrice);
+  const tibberAvailable = tibberEntity?.state !== undefined && tibberEntity?.state !== "unavailable";
+  const tibberAvg = tibberAvailable ? (tibberEntity!.attributes?.avg_price as number | undefined) : undefined;
+  const tibberMin = tibberAvailable ? (tibberEntity!.attributes?.min_price as number | undefined) : undefined;
+  const tibberMax = tibberAvailable ? (tibberEntity!.attributes?.max_price as number | undefined) : undefined;
+  const epexAvg = useEntityNumericState(ENTITIES.energy.spotAverage);
+  const epexMin = useEntityNumericState(ENTITIES.energy.spotLowest);
+  const epexMax = useEntityNumericState(ENTITIES.energy.spotHighest);
+  const avgPrice = tibberAvg ?? epexAvg;
+  const lowestPrice = tibberMin ?? epexMin;
+  const highestPrice = tibberMax ?? epexMax;
 
   const data = useMemo((): PriceDataPoint[] => {
     const attrs = spotEntity?.attributes;
@@ -33,14 +41,17 @@ export function SpotPriceChart() {
     if (Array.isArray(priceData)) {
       const currentHour = new Date().getHours();
       return priceData.map(
-        (item: { start_time?: string; hour?: number; price_eur_per_mwh?: number; price?: number }, i: number) => {
+        (item: { start_time?: string; hour?: number; price_eur_per_mwh?: number; price?: number; price_per_kwh?: number }, i: number) => {
           const hour = item.start_time
             ? new Date(item.start_time).getHours()
             : item.hour ?? i;
-          const price =
-            item.price_eur_per_mwh !== undefined
-              ? item.price_eur_per_mwh / 1000
-              : item.price ?? 0;
+          const rawPrice =
+            item.price_per_kwh !== undefined
+              ? Number(item.price_per_kwh)
+              : item.price_eur_per_mwh !== undefined
+                ? Number(item.price_eur_per_mwh) / 1000
+                : Number(item.price ?? 0);
+          const price = isNaN(rawPrice) ? 0 : rawPrice;
           return {
             hour: `${hour}:00`,
             price: price * 100,
@@ -53,7 +64,10 @@ export function SpotPriceChart() {
     return [];
   }, [spotEntity]);
 
-  const currentPrice = spotEntity ? parseFloat(spotEntity.state) * 100 : null;
+  const tibberPrice = tibberAvailable ? parseFloat(tibberEntity!.state) : NaN;
+  const epexPrice = spotEntity ? parseFloat(spotEntity.state) : NaN;
+  const priceRaw = !isNaN(tibberPrice) ? tibberPrice : !isNaN(epexPrice) ? epexPrice : null;
+  const currentPrice = priceRaw !== null ? priceRaw * 100 : null;
 
   return (
     <Card className="md:col-span-2">

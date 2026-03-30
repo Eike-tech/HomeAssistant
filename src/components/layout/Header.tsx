@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useEntity } from "@/lib/hooks/useEntity";
 import { ENTITIES } from "@/lib/hass/entities";
 import { ConnectionStatus } from "./ConnectionStatus";
+import { SmartAlerts } from "./SmartAlerts";
 import { formatTemperature } from "@/lib/utils/formatters";
 
 const weatherIcons: Record<string, string> = {
@@ -24,6 +25,37 @@ const weatherIcons: Record<string, string> = {
   exceptional: "⚠️",
 };
 
+function DoorIndicators() {
+  const door1 = useEntity(ENTITIES.general.doorSensor1);
+  const door2 = useEntity(ENTITIES.general.doorSensor2);
+
+  const doors = [
+    { entity: door1, label: "Tür 1" },
+    { entity: door2, label: "Tür 2" },
+  ];
+
+  const anyOpen = doors.some((d) => d.entity?.state === "on");
+  if (!door1 && !door2) return null;
+
+  return (
+    <div className="flex items-center gap-1.5">
+      {doors.map((d, i) => {
+        const isOpen = d.entity?.state === "on";
+        return (
+          <div
+            key={i}
+            title={`${d.label}: ${isOpen ? "Offen" : "Geschlossen"}`}
+            className={`h-2 w-2 rounded-full transition-colors ${
+              isOpen ? "bg-red-400 animate-pulse" : "bg-green-400/60"
+            }`}
+          />
+        );
+      })}
+      {anyOpen && <span className="text-[10px] text-red-400 font-medium ml-0.5">Offen</span>}
+    </div>
+  );
+}
+
 export function Header() {
   const [time, setTime] = useState(new Date());
   const weather = useEntity(ENTITIES.general.weather);
@@ -40,27 +72,31 @@ export function Header() {
   const personName = person?.attributes?.friendly_name ?? "";
 
   return (
-    <header className="flex items-center justify-between px-2 py-3">
-      <div className="flex items-center gap-4">
-        <div className="flex items-center gap-2">
-          <span className="text-3xl">{weatherIcon}</span>
-          <div className="flex flex-col">
-            <span className="text-xl font-semibold tracking-tight">
-              {temp !== undefined ? formatTemperature(temp) : "—"}
-            </span>
-            <span className="text-xs text-muted-foreground">
-              {personName} · {personState}
-            </span>
+    <div className="space-y-2">
+      <header className="flex items-center justify-between px-2 py-3">
+        <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2">
+            <span className="text-3xl">{weatherIcon}</span>
+            <div className="flex flex-col">
+              <span className="text-xl font-semibold tracking-tight">
+                {temp !== undefined ? formatTemperature(temp) : "—"}
+              </span>
+              <span className="text-xs text-muted-foreground">
+                {personName} · {personState}
+              </span>
+            </div>
           </div>
+          <DoorIndicators />
         </div>
-      </div>
 
-      <div className="flex items-center gap-5">
-        <ConnectionStatus />
-        <time className="text-3xl font-light tracking-tight tabular-nums text-foreground/80">
-          {time.toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" })}
-        </time>
-      </div>
-    </header>
+        <div className="flex items-center gap-5">
+          <ConnectionStatus />
+          <time className="text-3xl font-light tracking-tight tabular-nums text-foreground/80">
+            {time.toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" })}
+          </time>
+        </div>
+      </header>
+      <SmartAlerts />
+    </div>
   );
 }

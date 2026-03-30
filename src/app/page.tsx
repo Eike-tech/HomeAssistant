@@ -1,37 +1,25 @@
 "use client";
 
+import { useState } from "react";
 import { HassProvider } from "@/lib/hooks/useHass";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import { Header } from "@/components/layout/Header";
-import { DashboardShell } from "@/components/layout/DashboardShell";
-import { EnergyOverviewCard } from "@/components/energy/EnergyOverviewCard";
-import { SpotPriceChart } from "@/components/energy/SpotPriceChart";
-import { CarOverviewCard } from "@/components/car/CarOverviewCard";
-import { ClimateCard } from "@/components/climate/ClimateCard";
-import { LightingCard } from "@/components/lighting/LightingCard";
-import { MediaCard } from "@/components/media/MediaCard";
-import { VacuumCard } from "@/components/vacuum/VacuumCard";
+import { Sidebar, type Page } from "@/components/layout/Sidebar";
+import { DashboardContent } from "@/components/pages/DashboardContent";
+import { EnergiePage } from "@/components/pages/EnergiePage";
 
 export default function DashboardPage() {
+  const [activePage, setActivePage] = useState<Page>("dashboard");
+
   return (
     <HassProvider>
       <TooltipProvider>
-        <main className="mx-auto max-w-7xl space-y-5 p-5 md:p-8">
-          <Header />
-          <DashboardShell>
-            <EnergyOverviewCard />
-            <CarOverviewCard />
-            <div className="space-y-5">
-              <ClimateCard />
-              <VacuumCard />
-            </div>
-
-            <SpotPriceChart />
-            <LightingCard />
-
-            <MediaCard />
-          </DashboardShell>
-        </main>
+        <div className="flex min-h-screen">
+          <Sidebar activePage={activePage} onNavigate={setActivePage} />
+          <div className="flex-1 overflow-y-auto pb-16 md:pb-0">
+            {activePage === "dashboard" && <DashboardContent />}
+            {activePage === "energie" && <EnergiePage />}
+          </div>
+        </div>
       </TooltipProvider>
     </HassProvider>
   );
