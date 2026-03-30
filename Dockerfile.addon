@@ -14,18 +14,10 @@ ENV NEXT_PUBLIC_HASS_TOKEN=__HASS_TOKEN_PLACEHOLDER__
 ENV NEXT_PUBLIC_BASE_PATH=/__HA_INGRESS__
 RUN npm run build
 
-# --- Runtime: Alpine with bashio for HA Add-on compatibility ---
+# --- Runtime: lightweight Alpine ---
 FROM alpine:3.20 AS runner
 
-# Install Node.js and bashio
 RUN apk add --no-cache nodejs bash curl jq
-
-# Install bashio
-ARG BASHIO_VERSION=0.16.2
-RUN curl -sL "https://github.com/hassio-addons/bashio/archive/v${BASHIO_VERSION}.tar.gz" | tar xz \
-    && mv "bashio-${BASHIO_VERSION}/lib" /usr/lib/bashio \
-    && ln -s /usr/lib/bashio/bashio /usr/bin/bashio \
-    && rm -rf "bashio-${BASHIO_VERSION}"
 
 WORKDIR /app
 

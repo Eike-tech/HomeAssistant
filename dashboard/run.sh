@@ -1,30 +1,21 @@
 #!/usr/bin/env bash
 set -e
 
-# Source bashio if available (HA Add-on environment)
-if [ -f /usr/lib/bashio/bashio ]; then
-    # shellcheck source=/dev/null
-    source /usr/lib/bashio/bashio
-    HAS_BASHIO=true
-else
-    HAS_BASHIO=false
-fi
-
 log() {
-    if [ "$HAS_BASHIO" = true ]; then
-        bashio::log.info "$1"
-    else
-        echo "[INFO] $1"
-    fi
+    echo "[INFO] $1"
 }
 
-# Read token from Add-on config, Supervisor, or environment
+# Read token: try Supervisor API for add-on config, then SUPERVISOR_TOKEN
 HASS_TOKEN=""
-if [ "$HAS_BASHIO" = true ] && bashio::config.has_value 'hass_token'; then
-    HASS_TOKEN=$(bashio::config 'hass_token')
-fi
-if [ -z "$HASS_TOKEN" ] && [ -n "${SUPERVISOR_TOKEN:-}" ]; then
-    HASS_TOKEN="${SUPERVISOR_TOKEN}"
+if [ -n "${SUPERVISOR_TOKEN:-}" ]; then
+    # Try to read token from add-on options via Supervisor API
+    ADDON_TOKEN=$(curl -s -H "Authorization: Bearer ${SUPERVISOR_TOKEN}" \
+        http://supervisor/addons/self/options | jq -r '.data.hass_token // empty' 2>/dev/null || true)
+    if [ -n "$ADDON_TOKEN" ]; then
+        HASS_TOKEN="$ADDON_TOKEN"
+    else
+        HASS_TOKEN="${SUPERVISOR_TOKEN}"
+    fi
 fi
 
 # Determine HA URL
@@ -38,7 +29,7 @@ fi
 INGRESS_PATH=""
 if [ -n "${SUPERVISOR_TOKEN:-}" ]; then
     INGRESS_PATH=$(curl -s -H "Authorization: Bearer ${SUPERVISOR_TOKEN}" \
-        http://supervisor/addons/self/info | jq -r '.data.ingress_entry // empty')
+        http://supervisor/addons/self/info | jq -r '.data.ingress_entry // empty' 2>/dev/null || true)
     log "Ingress path: ${INGRESS_PATH}"
 fi
 
@@ -46,7 +37,6 @@ log "Starting Dashboard..."
 log "Connecting to Home Assistant at ${HASS_URL}"
 
 # Replace build-time placeholders with runtime values in all JS files
-# INGRESS_PATH is injected so Next.js asset URLs resolve correctly through HA's ingress proxy
 find /app/.next -name "*.js" -exec sed -i \
     -e "s|__HASS_URL_PLACEHOLDER__|${HASS_URL}|g" \
     -e "s|__HASS_TOKEN_PLACEHOLDER__|${HASS_TOKEN}|g" \
