@@ -36,8 +36,8 @@ fi
 log "Starting Dashboard..."
 log "Connecting to Home Assistant at ${HASS_URL}"
 
-# Replace build-time placeholders with runtime values in all JS files
-find /app/.next -name "*.js" -exec sed -i \
+# Replace build-time placeholders with runtime values in all relevant files
+find /app/.next -type f \( -name "*.js" -o -name "*.html" -o -name "*.json" -o -name "*.rsc" \) -exec sed -i \
     -e "s|__HASS_URL_PLACEHOLDER__|${HASS_URL}|g" \
     -e "s|__HASS_TOKEN_PLACEHOLDER__|${HASS_TOKEN}|g" \
     -e "s|/__HA_INGRESS__|${INGRESS_PATH}|g" \
