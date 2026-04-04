@@ -108,20 +108,38 @@ function formatLabel(dateStr: string, period: "day" | "month"): string {
   return d.toLocaleDateString("de-DE", { day: "numeric", month: "short" });
 }
 
-function sumChanges(stats: StatisticsResult, entityId: string): number {
+function sumFromSumField(stats: StatisticsResult, entityId: string): number {
   const entries = stats[entityId];
   if (!entries?.length) return 0;
-  return entries.reduce((sum, e) => sum + (e.change ?? 0), 0);
+  // Use the difference between last and first sum value (reset-compensated)
+  const first = entries[0].sum ?? 0;
+  const last = entries[entries.length - 1].sum ?? 0;
+  return Math.max(0, last - first);
 }
 
-function toChartPoints(stats: StatisticsResult, entityId: string, period: "day" | "month", field: "change" | "mean" = "change"): ChartPoint[] {
+function toChartPoints(stats: StatisticsResult, entityId: string, period: "day" | "month", field: "sum" | "mean" = "sum"): ChartPoint[] {
   const entries = stats[entityId];
   if (!entries?.length) return [];
-  return entries.map((e) => ({
-    date: e.start,
-    label: formatLabel(e.start, period),
-    value: (field === "change" ? e.change : e.mean) ?? 0,
-  }));
+
+  if (field === "mean") {
+    return entries.map((e) => ({
+      date: e.start,
+      label: formatLabel(e.start, period),
+      value: e.mean ?? 0,
+    }));
+  }
+
+  // Compute deltas from consecutive sum values (reset-compensated, never negative)
+  return entries.map((e, i) => {
+    const prevSum = i > 0 ? (entries[i - 1].sum ?? 0) : (e.sum ?? 0);
+    const curSum = e.sum ?? 0;
+    const delta = i > 0 ? Math.max(0, curSum - prevSum) : 0;
+    return {
+      date: e.start,
+      label: formatLabel(e.start, period),
+      value: delta,
+    };
+  }).filter((_, i) => i > 0); // drop first entry (no previous to diff against)
 }
 
 const emptyKpis: Kpis = {
@@ -170,12 +188,12 @@ export function useHistoryData(period: TimePeriod): HistoryData {
         fetchStatistics(connection, [spotId], start, end, statPeriod),
       ]);
 
-      const totalConsumption = sumChanges(currentStats, consumptionId);
-      const totalCost = sumChanges(currentStats, costId);
+      const totalConsumption = sumFromSumField(currentStats, consumptionId);
+      const totalCost = sumFromSumField(currentStats, costId);
       const divisor = statPeriod === "month" ? (days / 30) : days;
 
-      const consumption = toChartPoints(currentStats, consumptionId, statPeriod, "change");
-      const cost = toChartPoints(currentStats, costId, statPeriod, "change");
+      const consumption = toChartPoints(currentStats, consumptionId, statPeriod, "sum");
+      const cost = toChartPoints(currentStats, costId, statPeriod, "sum");
 
       const loadCurveEntries = loadCurveStats[powerId] ?? [];
       const loadCurve: LoadCurvePoint[] = loadCurveEntries.map((e) => {
@@ -194,8 +212,8 @@ export function useHistoryData(period: TimePeriod): HistoryData {
         value: (e.mean ?? 0) * 100, // EUR/kWh → ct/kWh
       }));
 
-      const prevTotalConsumption = sumChanges(prevStats, consumptionId);
-      const prevTotalCost = sumChanges(prevStats, costId);
+      const prevTotalConsumption = sumFromSumField(prevStats, consumptionId);
+      const prevTotalCost = sumFromSumField(prevStats, costId);
 
       setData({
         consumption,
