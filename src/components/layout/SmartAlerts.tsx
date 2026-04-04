@@ -48,10 +48,13 @@ export function SmartAlerts() {
         if (lastChanged) {
           const minAgo = Math.round((Date.now() - new Date(lastChanged).getTime()) / 60000);
           if (minAgo >= 5) {
+            const timeStr = minAgo >= 60
+              ? `${Math.floor(minAgo / 60)}h ${minAgo % 60}min`
+              : `${minAgo} Min`;
             result.push({
               id: `door-${d.label}`,
               icon: DoorOpen,
-              message: `${d.label} seit ${minAgo} Min offen`,
+              message: `${d.label} seit ${timeStr} offen`,
               color: "text-red-400",
               bgColor: "bg-red-400/10 border-red-400/20",
             });

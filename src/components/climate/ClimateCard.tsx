@@ -12,7 +12,7 @@ import { RoomClimate } from "./RoomClimate";
 export function ClimateCard() {
   const { connection } = useHass();
   const thermostat = useEntity(ENTITIES.climate.thermostat);
-  const thermostatTemp = useEntityNumericState(ENTITIES.climate.thermostatTemp);
+  const thermostatTemp = useEntityNumericState(ENTITIES.climate.badTemp);
 
   const targetTemp = thermostat?.attributes?.temperature as number | undefined;
   const hvacMode = thermostat?.state ?? "unknown";
@@ -37,9 +37,9 @@ export function ClimateCard() {
         </span>
       </CardHeader>
       <CardContent className="space-y-4">
-        {/* Thermostat */}
+        {/* Thermostat Bad */}
         <div className="flex items-center justify-between">
-          <span className="text-sm text-muted-foreground">Thermostat</span>
+          <span className="text-sm text-muted-foreground">Bad</span>
           <span className="text-2xl font-light tabular-nums">
             {formatTemperature(thermostatTemp)}
           </span>
@@ -63,9 +63,9 @@ export function ClimateCard() {
 
         {/* Rooms */}
         <div className="space-y-2 pt-1">
-          <RoomClimate name="Raum 1" tempEntity={ENTITIES.climate.room1Temp} humidityEntity={ENTITIES.climate.room1Humidity} />
-          <RoomClimate name="Raum 2" tempEntity={ENTITIES.climate.room2Temp} humidityEntity={ENTITIES.climate.room2Humidity} />
-          <RoomClimate name="Raum 3" tempEntity={ENTITIES.climate.room3Temp} humidityEntity={ENTITIES.climate.room3Humidity} />
+          <RoomClimate name="Büro" tempEntity={ENTITIES.climate.bueroTemp} humidityEntity={ENTITIES.climate.bueroHumidity} />
+          <RoomClimate name="Wohnzimmer" tempEntity={ENTITIES.climate.wohnzimmerTemp} humidityEntity={ENTITIES.climate.wohnzimmerHumidity} />
+          <RoomClimate name="Schlafzimmer" tempEntity={ENTITIES.climate.schlafzimmerTemp} humidityEntity={ENTITIES.climate.schlafzimmerHumidity} />
         </div>
       </CardContent>
     </Card>

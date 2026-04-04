@@ -100,19 +100,23 @@ export const ENTITIES = {
     update: "update.crest_update",
   },
   climate: {
+    // Bad — Eve Thermo (Thermostat mit Ventil)
     thermostat: "climate.eve_thermo_20ebp1701",
-    thermostatTemp: "sensor.eve_thermo_20ebp1701_temperatur",
-    thermostatBattery: "sensor.eve_thermo_20ebp1701_batterie",
-    thermostatValve: "sensor.eve_thermo_20ebp1701_ventilstellung",
-    room1Temp: "sensor.eve_thermo_control_20eck9901_temperatur",
-    room1Humidity: "sensor.eve_thermo_control_20eck9901_luftfeuchtigkeit",
-    room1Battery: "sensor.eve_thermo_control_20eck9901_batterie",
-    room2Temp: "sensor.eve_thermo_control_20eck9901_temperatur_2",
-    room2Humidity: "sensor.eve_thermo_control_20eck9901_luftfeuchtigkeit_2",
-    room2Battery: "sensor.eve_thermo_control_20eck9901_batterie_2",
-    room3Temp: "sensor.eve_thermo_control_20eck9901_temperatur_3",
-    room3Humidity: "sensor.eve_thermo_control_20eck9901_luftfeuchtigkeit_3",
-    room3Battery: "sensor.eve_thermo_control_20eck9901_batterie_3",
+    badTemp: "sensor.eve_thermo_20ebp1701_temperatur",
+    badBattery: "sensor.eve_thermo_20ebp1701_batterie",
+    badValve: "sensor.eve_thermo_20ebp1701_ventilstellung",
+    // Büro — Eve Thermo Control
+    bueroTemp: "sensor.eve_thermo_control_20eck9901_temperatur",
+    bueroHumidity: "sensor.eve_thermo_control_20eck9901_luftfeuchtigkeit",
+    bueroBattery: "sensor.eve_thermo_control_20eck9901_batterie",
+    // Wohnzimmer — Eve Thermo Control
+    wohnzimmerTemp: "sensor.eve_thermo_control_20eck9901_temperatur_2",
+    wohnzimmerHumidity: "sensor.eve_thermo_control_20eck9901_luftfeuchtigkeit_2",
+    wohnzimmerBattery: "sensor.eve_thermo_control_20eck9901_batterie_2",
+    // Schlafzimmer — Eve Thermo Control
+    schlafzimmerTemp: "sensor.eve_thermo_control_20eck9901_temperatur_3",
+    schlafzimmerHumidity: "sensor.eve_thermo_control_20eck9901_luftfeuchtigkeit_3",
+    schlafzimmerBattery: "sensor.eve_thermo_control_20eck9901_batterie_3",
   },
   lighting: {
     wohnzimmer: "light.wohnzimmer",
