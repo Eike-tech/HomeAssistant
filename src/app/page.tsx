@@ -7,12 +7,14 @@ import { Sidebar, type Page } from "@/components/layout/Sidebar";
 import { DashboardContent } from "@/components/pages/DashboardContent";
 import { EnergiePage } from "@/components/pages/EnergiePage";
 import { VerlaufPage } from "@/components/pages/VerlaufPage";
+import { DailyRecorder } from "@/components/DailyRecorder";
 
 export default function DashboardPage() {
   const [activePage, setActivePage] = useState<Page>("dashboard");
 
   return (
     <HassProvider>
+      <DailyRecorder />
       <TooltipProvider>
         <div className="flex min-h-screen">
           <Sidebar activePage={activePage} onNavigate={setActivePage} />
