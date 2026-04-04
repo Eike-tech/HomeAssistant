@@ -169,6 +169,8 @@ export const ENTITIES = {
     person: "person.eike_clement",
     weather: "weather.forecast_home",
     sun: "sun.sun",
+    presenceEike: "device_tracker.iphone_3",
+    presenceSabrina: "device_tracker.iphone",
     doorBuero: "binary_sensor.eve_door_20ebn9901_tur",
     doorWohnzimmer: "binary_sensor.eve_door_20ebn9901_tur_2",
     doorSchlafzimmer: "binary_sensor.eve_door_20ebn9901_tur_3",

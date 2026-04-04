@@ -1,16 +1,38 @@
 "use client";
 
-import { Dog, MapPin, Battery, BatteryCharging, Moon, Activity, Zap } from "lucide-react";
+import { Dog, User, Battery, BatteryCharging, Moon, Activity, Zap } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useEntity, useEntityNumericState, useEntityState } from "@/lib/hooks/useEntity";
 import { ENTITIES } from "@/lib/hass/entities";
 import { formatPercent } from "@/lib/utils/formatters";
 
+// ── People ─────────────────────────────────────────────────
+
+function PersonTile({ name, trackerEntity }: { name: string; trackerEntity: string }) {
+  const tracker = useEntityState(trackerEntity);
+  const isHome = tracker === "home";
+
+  return (
+    <div className="rounded-2xl bg-white/[0.04] px-4 py-3">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <User className="h-4 w-4 text-blue-400" />
+          <span className="text-sm font-medium">{name}</span>
+        </div>
+        <div className={`h-2.5 w-2.5 rounded-full ${isHome ? "bg-green-400" : "bg-white/20"}`}
+          title={isHome ? "Zuhause" : "Unterwegs"}
+        />
+      </div>
+    </div>
+  );
+}
+
+// ── Pets ────────────────────────────────────────────────────
+
 interface PetData {
   name: string;
   trackerEntity: string;
   batteryEntity: string;
-  statusEntity: string;
   activityEntity: string;
   goalEntity: string;
   daySleepEntity: string;
@@ -24,7 +46,6 @@ const pets: PetData[] = [
     name: "Nala",
     trackerEntity: ENTITIES.pets.nalaTracker,
     batteryEntity: ENTITIES.pets.nalaBattery,
-    statusEntity: ENTITIES.pets.nalaStatus,
     activityEntity: ENTITIES.pets.nalaActivity,
     goalEntity: ENTITIES.pets.nalaGoal,
     daySleepEntity: ENTITIES.pets.nalaDaySleep,
@@ -36,7 +57,6 @@ const pets: PetData[] = [
     name: "Biene",
     trackerEntity: ENTITIES.pets.bieneTracker,
     batteryEntity: ENTITIES.pets.bieneBattery,
-    statusEntity: ENTITIES.pets.bieneStatus,
     activityEntity: ENTITIES.pets.bieneActivity,
     goalEntity: ENTITIES.pets.bieneGoal,
     daySleepEntity: ENTITIES.pets.bieneDaySleep,
@@ -138,15 +158,24 @@ function PetTile({ pet }: { pet: PetData }) {
   );
 }
 
+// ── Card ────────────────────────────────────────────────────
+
 export function PetsCard() {
   return (
     <Card>
       <CardHeader>
         <CardTitle className="text-muted-foreground font-medium text-sm">
-          Hunde
+          Zuhause
         </CardTitle>
       </CardHeader>
-      <CardContent>
+      <CardContent className="space-y-3">
+        {/* People */}
+        <div className="grid grid-cols-2 gap-3">
+          <PersonTile name="Eike" trackerEntity={ENTITIES.general.presenceEike} />
+          <PersonTile name="Sabrina" trackerEntity={ENTITIES.general.presenceSabrina} />
+        </div>
+
+        {/* Pets */}
         <div className="grid grid-cols-2 gap-3">
           {pets.map((pet) => (
             <PetTile key={pet.name} pet={pet} />
