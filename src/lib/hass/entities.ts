@@ -165,8 +165,10 @@ export const ENTITIES = {
     person: "person.eike_clement",
     weather: "weather.forecast_home",
     sun: "sun.sun",
-    doorSensor1: "binary_sensor.eve_door_20ebn9901_tur",
-    doorSensor2: "binary_sensor.eve_door_20ebn9901_tur_2",
+    doorBuero: "binary_sensor.eve_door_20ebn9901_tur",
+    doorWohnzimmer: "binary_sensor.eve_door_20ebn9901_tur_2",
+    doorSchlafzimmer: "binary_sensor.eve_door_20ebn9901_tur_3",
+    doorBad: "binary_sensor.eve_door_20ebn9901_tur_4",
     nukiOpener: "device_tracker.nuki_opener_2d1ebaea",
   },
   household: {

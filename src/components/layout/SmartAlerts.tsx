@@ -14,8 +14,10 @@ interface Alert {
 }
 
 export function SmartAlerts() {
-  const door1 = useEntity(ENTITIES.general.doorSensor1);
-  const door2 = useEntity(ENTITIES.general.doorSensor2);
+  const doorBuero = useEntity(ENTITIES.general.doorBuero);
+  const doorWohnzimmer = useEntity(ENTITIES.general.doorWohnzimmer);
+  const doorSchlafzimmer = useEntity(ENTITIES.general.doorSchlafzimmer);
+  const doorBad = useEntity(ENTITIES.general.doorBad);
   const tibberEntity = useEntity(ENTITIES.energy.tibberPrice);
   const spotEntity = useEntity(ENTITIES.energy.spotPrice);
   const epexLowest = useEntityNumericState(ENTITIES.energy.spotLowest);
@@ -35,8 +37,10 @@ export function SmartAlerts() {
 
     // Door open alerts
     const doors = [
-      { entity: door1, label: "Tür 1" },
-      { entity: door2, label: "Tür 2" },
+      { entity: doorBuero, label: "Büro" },
+      { entity: doorWohnzimmer, label: "Wohnzimmer" },
+      { entity: doorSchlafzimmer, label: "Schlafzimmer" },
+      { entity: doorBad, label: "Bad" },
     ];
     for (const d of doors) {
       if (d.entity?.state === "on") {
@@ -93,7 +97,7 @@ export function SmartAlerts() {
     }
 
     return result;
-  }, [door1, door2, priceEntity, priceMin, filterRemaining, sensorRemaining, sideBrushRemaining, isCharging, isPlugged]);
+  }, [doorBuero, doorWohnzimmer, doorSchlafzimmer, doorBad, priceEntity, priceMin, filterRemaining, sensorRemaining, sideBrushRemaining, isCharging, isPlugged]);
 
   if (alerts.length === 0) return null;
 

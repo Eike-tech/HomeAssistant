@@ -26,16 +26,20 @@ const weatherIcons: Record<string, string> = {
 };
 
 function DoorIndicators() {
-  const door1 = useEntity(ENTITIES.general.doorSensor1);
-  const door2 = useEntity(ENTITIES.general.doorSensor2);
+  const doorBuero = useEntity(ENTITIES.general.doorBuero);
+  const doorWohnzimmer = useEntity(ENTITIES.general.doorWohnzimmer);
+  const doorSchlafzimmer = useEntity(ENTITIES.general.doorSchlafzimmer);
+  const doorBad = useEntity(ENTITIES.general.doorBad);
 
   const doors = [
-    { entity: door1, label: "Tür 1" },
-    { entity: door2, label: "Tür 2" },
+    { entity: doorBuero, label: "Büro" },
+    { entity: doorWohnzimmer, label: "Wohnzimmer" },
+    { entity: doorSchlafzimmer, label: "Schlafzimmer" },
+    { entity: doorBad, label: "Bad" },
   ];
 
   const anyOpen = doors.some((d) => d.entity?.state === "on");
-  if (!door1 && !door2) return null;
+  if (!doorBuero && !doorWohnzimmer && !doorSchlafzimmer && !doorBad) return null;
 
   return (
     <div className="flex items-center gap-1.5">
