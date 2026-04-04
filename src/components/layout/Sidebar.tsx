@@ -1,14 +1,15 @@
 "use client";
 
-import { LayoutDashboard, Zap, History } from "lucide-react";
+import { LayoutDashboard, Zap, History, Bot } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 
-export type Page = "dashboard" | "energie" | "verlauf";
+export type Page = "dashboard" | "energie" | "verlauf" | "automationen";
 
 const navItems: { id: Page; label: string; icon: typeof LayoutDashboard }[] = [
   { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
   { id: "energie", label: "Energie", icon: Zap },
   { id: "verlauf", label: "Verlauf", icon: History },
+  { id: "automationen", label: "Automationen", icon: Bot },
 ];
 
 interface SidebarProps {

@@ -7,6 +7,7 @@ import { Sidebar, type Page } from "@/components/layout/Sidebar";
 import { DashboardContent } from "@/components/pages/DashboardContent";
 import { EnergiePage } from "@/components/pages/EnergiePage";
 import { VerlaufPage } from "@/components/pages/VerlaufPage";
+import { AutomationenPage } from "@/components/pages/AutomationenPage";
 import { DailyRecorder } from "@/components/DailyRecorder";
 
 export default function DashboardPage() {
@@ -22,6 +23,7 @@ export default function DashboardPage() {
             {activePage === "dashboard" && <DashboardContent />}
             {activePage === "energie" && <EnergiePage />}
             {activePage === "verlauf" && <VerlaufPage />}
+            {activePage === "automationen" && <AutomationenPage />}
           </div>
         </div>
       </TooltipProvider>
