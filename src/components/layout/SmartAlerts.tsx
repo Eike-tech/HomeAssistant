@@ -77,19 +77,19 @@ export function SmartAlerts() {
       }
     }
 
-    // Vacuum maintenance alerts
+    // Vacuum maintenance alerts (values are runtime seconds, not calendar time)
     const maintenanceItems = [
-      { remaining: filterRemaining, label: "Vakuum-Filter", threshold: 2 * 86400 },
-      { remaining: sensorRemaining, label: "Vakuum-Sensor", threshold: 2 * 86400 },
-      { remaining: sideBrushRemaining, label: "Seitenbürste", threshold: 3 * 86400 },
+      { remaining: filterRemaining, label: "Vakuum-Filter", threshold: 10 * 3600 },
+      { remaining: sensorRemaining, label: "Vakuum-Sensor", threshold: 10 * 3600 },
+      { remaining: sideBrushRemaining, label: "Seitenbürste", threshold: 10 * 3600 },
     ];
     for (const item of maintenanceItems) {
       if (item.remaining !== null && item.remaining < item.threshold) {
-        const days = Math.round(item.remaining / 86400);
+        const hours = Math.round(item.remaining / 3600);
         result.push({
           id: `maintenance-${item.label}`,
           icon: Wrench,
-          message: `${item.label} in ${days <= 0 ? "< 1" : days} Tag${days !== 1 ? "en" : ""} fällig`,
+          message: `${item.label}: noch ${hours <= 0 ? "< 1" : hours} Betriebsstunde${hours !== 1 ? "n" : ""}`,
           color: "text-orange-400",
           bgColor: "bg-orange-400/10 border-orange-400/20",
         });

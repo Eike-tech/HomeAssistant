@@ -22,7 +22,7 @@ function MaintenanceIndicator({ label, remainingSeconds }: { label: string; rema
   if (remainingSeconds === null) return null;
   const totalSeconds = label === "Filter" ? 150 * 3600 : label === "Sensor" ? 30 * 3600 : 300 * 3600;
   const pct = Math.min(100, Math.max(0, (remainingSeconds / totalSeconds) * 100));
-  const days = Math.round(remainingSeconds / 86400);
+  const hours = Math.round(remainingSeconds / 3600);
   const isLow = pct < 15;
 
   return (
@@ -34,8 +34,8 @@ function MaintenanceIndicator({ label, remainingSeconds }: { label: string; rema
           style={{ width: `${pct}%` }}
         />
       </div>
-      <span className={`text-[10px] tabular-nums w-8 text-right ${isLow ? "text-red-400" : "text-muted-foreground"}`}>
-        {days}d
+      <span className={`text-[10px] tabular-nums w-10 text-right ${isLow ? "text-red-400" : "text-muted-foreground"}`}>
+        {hours}h
       </span>
     </div>
   );
