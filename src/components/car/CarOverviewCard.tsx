@@ -10,7 +10,41 @@ import { BatteryGauge } from "./BatteryGauge";
 import { ChargeStatus } from "./ChargeStatus";
 import { CarControls } from "./CarControls";
 import { callService } from "home-assistant-js-websocket";
-import { MapPin, Shield, ShieldOff, Thermometer, Wind, Radio } from "lucide-react";
+import { MapPin, Shield, ShieldOff, Thermometer, Wind, Radio, Navigation } from "lucide-react";
+
+function LocationMap() {
+  const tracker = useEntity(ENTITIES.car.location);
+  const lat = tracker?.attributes?.latitude as number | undefined;
+  const lon = tracker?.attributes?.longitude as number | undefined;
+
+  if (lat === undefined || lon === undefined) return null;
+
+  const zoom = 15;
+  const tileUrl = `https://tile.openstreetmap.org/${zoom}/${lonLatToTile(lon, lat, zoom).x}/${lonLatToTile(lon, lat, zoom).y}.png`;
+
+  return (
+    <div className="relative overflow-hidden rounded-2xl h-[140px] bg-white/[0.04]">
+      <img
+        src={`https://staticmap.openstreetmap.de/staticmap.php?center=${lat},${lon}&zoom=${zoom}&size=400x140&maptype=osmarenderer&markers=${lat},${lon},red-pushpin`}
+        alt="Fahrzeugstandort"
+        className="w-full h-full object-cover opacity-80"
+        loading="lazy"
+      />
+      <div className="absolute bottom-2 left-2 flex items-center gap-1 rounded-lg bg-black/70 px-2 py-1 text-[10px] text-white backdrop-blur-sm">
+        <Navigation className="h-3 w-3" />
+        <span>{lat.toFixed(4)}, {lon.toFixed(4)}</span>
+      </div>
+    </div>
+  );
+}
+
+function lonLatToTile(lon: number, lat: number, zoom: number) {
+  const x = Math.floor(((lon + 180) / 360) * Math.pow(2, zoom));
+  const y = Math.floor(
+    ((1 - Math.log(Math.tan((lat * Math.PI) / 180) + 1 / Math.cos((lat * Math.PI) / 180)) / Math.PI) / 2) * Math.pow(2, zoom)
+  );
+  return { x, y };
+}
 
 function DoorWindowStatus() {
   const doors = [
@@ -184,6 +218,7 @@ export function CarOverviewCard() {
 
         <ComfortControls />
         <CarControls />
+        <LocationMap />
       </CardContent>
     </Card>
   );
