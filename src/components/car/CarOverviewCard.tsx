@@ -12,6 +12,14 @@ import { CarControls } from "./CarControls";
 import { callService } from "home-assistant-js-websocket";
 import { MapPin, Shield, ShieldOff, Thermometer, Wind, Radio, Navigation } from "lucide-react";
 
+function lonLatToTile(lon: number, lat: number, zoom: number) {
+  const x = ((lon + 180) / 360) * Math.pow(2, zoom);
+  const y =
+    ((1 - Math.log(Math.tan((lat * Math.PI) / 180) + 1 / Math.cos((lat * Math.PI) / 180)) / Math.PI) / 2) *
+    Math.pow(2, zoom);
+  return { x, y, tileX: Math.floor(x), tileY: Math.floor(y) };
+}
+
 function LocationMap() {
   const tracker = useEntity(ENTITIES.car.location);
   const lat = tracker?.attributes?.latitude as number | undefined;
@@ -20,30 +28,60 @@ function LocationMap() {
   if (lat === undefined || lon === undefined) return null;
 
   const zoom = 15;
-  const tileUrl = `https://tile.openstreetmap.org/${zoom}/${lonLatToTile(lon, lat, zoom).x}/${lonLatToTile(lon, lat, zoom).y}.png`;
+  const { x, y, tileX, tileY } = lonLatToTile(lon, lat, zoom);
+
+  // Calculate pixel offset within tile grid (3x3 tiles, 256px each)
+  const fracX = x - tileX;
+  const fracY = y - tileY;
+  const gridSize = 3;
+  const tileSize = 256;
+  const totalSize = gridSize * tileSize;
+  // Center the marker: offset so the fractional position lands at center of container
+  const offsetX = -(fracX * tileSize + tileSize) + 200; // ~center horizontally (400/2)
+  const offsetY = -(fracY * tileSize + tileSize) + 150; // ~center vertically (300/2)
+
+  const tiles: { tx: number; ty: number; key: string }[] = [];
+  for (let dy = -1; dy <= 1; dy++) {
+    for (let dx = -1; dx <= 1; dx++) {
+      tiles.push({ tx: tileX + dx, ty: tileY + dy, key: `${dx},${dy}` });
+    }
+  }
 
   return (
-    <div className="relative overflow-hidden rounded-2xl h-[140px] bg-white/[0.04]">
-      <img
-        src={`https://staticmap.openstreetmap.de/staticmap.php?center=${lat},${lon}&zoom=${zoom}&size=400x140&maptype=osmarenderer&markers=${lat},${lon},red-pushpin`}
-        alt="Fahrzeugstandort"
-        className="w-full h-full object-cover opacity-80"
-        loading="lazy"
-      />
-      <div className="absolute bottom-2 left-2 flex items-center gap-1 rounded-lg bg-black/70 px-2 py-1 text-[10px] text-white backdrop-blur-sm">
+    <div className="-mx-6 -mb-6 relative overflow-hidden h-[300px] bg-neutral-900">
+      {/* Tile grid */}
+      <div
+        className="absolute invert hue-rotate-180 brightness-95 contrast-90"
+        style={{ left: offsetX, top: offsetY, width: totalSize, height: totalSize }}
+      >
+        {tiles.map((t) => (
+          <img
+            key={t.key}
+            src={`https://tile.openstreetmap.org/${zoom}/${t.tx}/${t.ty}.png`}
+            alt=""
+            width={tileSize}
+            height={tileSize}
+            className="absolute"
+            style={{
+              left: (t.tx - tileX + 1) * tileSize,
+              top: (t.ty - tileY + 1) * tileSize,
+            }}
+            loading="lazy"
+          />
+        ))}
+      </div>
+      {/* Marker dot */}
+      <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-10">
+        <div className="h-4 w-4 rounded-full bg-blue-500 border-2 border-white shadow-lg" />
+        <div className="absolute -inset-2 rounded-full bg-blue-500/20 animate-ping" />
+      </div>
+      {/* Coordinate overlay */}
+      <div className="absolute bottom-2 left-2 flex items-center gap-1 rounded-lg bg-black/70 px-2 py-1 text-[10px] text-white backdrop-blur-sm z-10">
         <Navigation className="h-3 w-3" />
         <span>{lat.toFixed(4)}, {lon.toFixed(4)}</span>
       </div>
     </div>
   );
-}
-
-function lonLatToTile(lon: number, lat: number, zoom: number) {
-  const x = Math.floor(((lon + 180) / 360) * Math.pow(2, zoom));
-  const y = Math.floor(
-    ((1 - Math.log(Math.tan((lat * Math.PI) / 180) + 1 / Math.cos((lat * Math.PI) / 180)) / Math.PI) / 2) * Math.pow(2, zoom)
-  );
-  return { x, y };
 }
 
 function DoorWindowStatus() {
