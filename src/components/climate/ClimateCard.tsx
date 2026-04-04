@@ -17,7 +17,6 @@ export function ClimateCard() {
           <RoomClimate
             name="Bad"
             tempEntity={ENTITIES.climate.badTemp}
-            thermostatEntity={ENTITIES.climate.thermostat}
           />
           <RoomClimate
             name="Büro"

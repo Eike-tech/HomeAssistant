@@ -2,7 +2,7 @@
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { useEntityNumericState, useEntityState } from "@/lib/hooks/useEntity";
+import { useEntity, useEntityNumericState, useEntityState } from "@/lib/hooks/useEntity";
 import { useHass } from "@/lib/hooks/useHass";
 import { ENTITIES } from "@/lib/hass/entities";
 import { formatRange, formatPercent, formatTemperature } from "@/lib/utils/formatters";
@@ -10,7 +10,7 @@ import { BatteryGauge } from "./BatteryGauge";
 import { ChargeStatus } from "./ChargeStatus";
 import { CarControls } from "./CarControls";
 import { callService } from "home-assistant-js-websocket";
-import { MapPin, Shield, ShieldOff, Thermometer, Wind } from "lucide-react";
+import { MapPin, Shield, ShieldOff, Thermometer, Wind, Radio } from "lucide-react";
 
 function DoorWindowStatus() {
   const doors = [
@@ -104,7 +104,8 @@ export function CarOverviewCard() {
   const battery = useEntityNumericState(ENTITIES.car.battery);
   const range = useEntityNumericState(ENTITIES.car.range);
   const targetCharge = useEntityNumericState(ENTITIES.car.targetCharge);
-  const connectivity = useEntityState(ENTITIES.car.connectivity);
+  const connectivityEntity = useEntity(ENTITIES.car.connectivity);
+  const connectivity = connectivityEntity?.state;
   const awake = useEntityState(ENTITIES.car.awake);
   const location = useEntityState(ENTITIES.car.location);
   const exteriorTemp = useEntityNumericState(ENTITIES.car.exteriorTemp);
@@ -131,6 +132,14 @@ export function CarOverviewCard() {
             <MapPin className="h-3 w-3" />
             {locationLabel}
           </span>
+          {connectivityEntity?.last_updated && (
+            <span className="flex items-center gap-1 text-[10px] text-muted-foreground">
+              <Radio className="h-3 w-3" />
+              {new Date(connectivityEntity.last_updated).toLocaleString("de-DE", {
+                day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit",
+              })}
+            </span>
+          )}
         </div>
       </CardHeader>
       <CardContent className="space-y-5">
