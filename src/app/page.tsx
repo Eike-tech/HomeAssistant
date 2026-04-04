@@ -6,6 +6,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { Sidebar, type Page } from "@/components/layout/Sidebar";
 import { DashboardContent } from "@/components/pages/DashboardContent";
 import { EnergiePage } from "@/components/pages/EnergiePage";
+import { VerlaufPage } from "@/components/pages/VerlaufPage";
 
 export default function DashboardPage() {
   const [activePage, setActivePage] = useState<Page>("dashboard");
@@ -18,6 +19,7 @@ export default function DashboardPage() {
           <div className="flex-1 overflow-y-auto pb-16 md:pb-0">
             {activePage === "dashboard" && <DashboardContent />}
             {activePage === "energie" && <EnergiePage />}
+            {activePage === "verlauf" && <VerlaufPage />}
           </div>
         </div>
       </TooltipProvider>
