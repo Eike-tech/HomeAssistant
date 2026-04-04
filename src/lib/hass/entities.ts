@@ -192,4 +192,28 @@ export const ENTITIES = {
     gbReceived: "sensor.fritz_box_7530_gb_empfangen",
     gbSent: "sensor.fritz_box_7530_gb_gesendet",
   },
+  pets: {
+    // Nala
+    nalaTracker: "device_tracker.nala_tracker",
+    nalaBattery: "sensor.nala_tracker_batterie",
+    nalaStatus: "sensor.nala_tracker_status",
+    nalaActivity: "sensor.nala_aktivitatszeit",
+    nalaRest: "sensor.nala_ruhezeit",
+    nalaGoal: "sensor.nala_tagliches_ziel",
+    nalaDaySleep: "sensor.nala_tagesschlaf",
+    nalaNightSleep: "sensor.nala_nachtschlaf",
+    nalaCharging: "binary_sensor.nala_tracker_batterie_wird_geladen",
+    nalaPowerSaving: "binary_sensor.nala_tracker_energiesparmodus",
+    // Biene
+    bieneTracker: "device_tracker.biene_tracker",
+    bieneBattery: "sensor.biene_tracker_batterie",
+    bieneStatus: "sensor.biene_tracker_status",
+    bieneActivity: "sensor.biene_aktivitatszeit",
+    bieneRest: "sensor.biene_ruhezeit",
+    bieneGoal: "sensor.biene_tagliches_ziel",
+    bieneDaySleep: "sensor.biene_tagesschlaf",
+    bieneNightSleep: "sensor.biene_nachtschlaf",
+    bieneCharging: "binary_sensor.biene_tracker_batterie_wird_geladen",
+    bienePowerSaving: "binary_sensor.biene_tracker_energiesparmodus",
+  },
 } as const;

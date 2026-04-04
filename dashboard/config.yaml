@@ -1,5 +1,5 @@
 name: Dashboard
-version: "1.4.0"
+version: "1.5.0"
 slug: dashboard
 description: Custom Home Assistant Dashboard with energy, climate, car, and media controls
 url: https://github.com/Eike-tech/HomeAssistant

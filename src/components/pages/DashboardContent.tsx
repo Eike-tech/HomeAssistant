@@ -11,6 +11,7 @@ import { ClimateCard } from "@/components/climate/ClimateCard";
 import { VacuumCard } from "@/components/vacuum/VacuumCard";
 import { NetworkCard } from "@/components/network/NetworkCard";
 import { HouseholdCard } from "@/components/household/HouseholdCard";
+import { PetsCard } from "@/components/pets/PetsCard";
 
 export function DashboardContent() {
   return (
@@ -21,6 +22,7 @@ export function DashboardContent() {
         <CarOverviewCard />
         <div className="space-y-5">
           <ClimateCard />
+          <PetsCard />
           <VacuumCard />
         </div>
 
