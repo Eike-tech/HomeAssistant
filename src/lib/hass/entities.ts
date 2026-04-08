@@ -26,6 +26,7 @@ export const ENTITIES = {
     eveEnergy1Power: "sensor.eve_energy_20ebo8301_leistung",
     eveEnergy2Power: "sensor.eve_energy_20ebo8301_leistung_2",
     shellyPower: "sensor.shelly1pmg4_a085e3bc51c4_switch_0_power",
+    gefrierschrankPower: "sensor.shelly1pmg4_48f6eec9de50_leistung",
     tibberPrice: "sensor.mount_cleltze_strompreis",
     tibberDailyCost: "sensor.tibber_pulse_mount_cleltze_kumulierte_kosten",
     co2Intensity: "sensor.electricity_maps_co2_intensitat",

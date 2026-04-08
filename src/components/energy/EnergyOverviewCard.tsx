@@ -39,6 +39,7 @@ const consumers = [
   { entity: ENTITIES.energy.eveEnergy1Power, name: "Workstation" },
   { entity: ENTITIES.energy.eveEnergy2Power, name: "Entertainment" },
   { entity: ENTITIES.energy.shellyPower, name: "Garten" },
+  { entity: ENTITIES.energy.gefrierschrankPower, name: "Gefrierschrank" },
 ];
 
 function ConsumerRow({ entity, name }: { entity: string; name: string }) {
