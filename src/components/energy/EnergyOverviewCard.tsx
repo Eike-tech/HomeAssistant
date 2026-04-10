@@ -21,7 +21,7 @@ function timeAgo(isoString: string | undefined): string {
 }
 
 function useRelativeTime(isoString: string | undefined) {
-  const [text, setText] = useState(() => timeAgo(isoString));
+  const [text, setText] = useState("—");
   useEffect(() => {
     setText(timeAgo(isoString));
     const interval = setInterval(() => setText(timeAgo(isoString)), 10000);

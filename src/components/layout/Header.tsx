@@ -61,11 +61,12 @@ function DoorIndicators() {
 }
 
 export function Header() {
-  const [time, setTime] = useState(new Date());
+  const [time, setTime] = useState<Date | null>(null);
   const weather = useEntity(ENTITIES.general.weather);
   const person = useEntity(ENTITIES.general.person);
 
   useEffect(() => {
+    setTime(new Date());
     const interval = setInterval(() => setTime(new Date()), 1000);
     return () => clearInterval(interval);
   }, []);
@@ -95,8 +96,8 @@ export function Header() {
 
         <div className="flex items-center gap-5">
           <ConnectionStatus />
-          <time className="text-3xl font-light tracking-tight tabular-nums text-foreground/80">
-            {time.toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" })}
+          <time suppressHydrationWarning className="text-3xl font-light tracking-tight tabular-nums text-foreground/80">
+            {time ? time.toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" }) : "\u2014"}
           </time>
         </div>
       </header>
