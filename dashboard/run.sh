@@ -58,24 +58,21 @@ if [ -f "$PREV_VALUES_FILE" ]; then
     log "Loaded previous values for re-replacement"
 fi
 
-# Replace both build-time placeholders and previously set values
-find /app/.next -type f \( -name "*.js" -o -name "*.html" -o -name "*.json" -o -name "*.rsc" \) -exec sed -i \
-    -e "s|__HASS_URL_PLACEHOLDER__|${HASS_URL}|g" \
-    -e "s|__HASS_TOKEN_PLACEHOLDER__|${HASS_TOKEN}|g" \
-    -e "s|/__HA_INGRESS__|${INGRESS_PATH}|g" \
-    -e "s|${PREV_HASS_URL}|${HASS_URL}|g" \
-    -e "s|${PREV_HASS_TOKEN}|${HASS_TOKEN}|g" \
-    -e "s|${PREV_INGRESS_PATH}|${INGRESS_PATH}|g" \
-    {} +
+# Build sed expressions — only add prev-value replacements if non-empty
+SED_ARGS=()
+SED_ARGS+=(-e "s|__HASS_URL_PLACEHOLDER__|${HASS_URL}|g")
+SED_ARGS+=(-e "s|__HASS_TOKEN_PLACEHOLDER__|${HASS_TOKEN}|g")
+SED_ARGS+=(-e "s|/__HA_INGRESS__|${INGRESS_PATH}|g")
+[ -n "$PREV_HASS_URL" ] && [ "$PREV_HASS_URL" != "__HASS_URL_PLACEHOLDER__" ] && \
+    SED_ARGS+=(-e "s|${PREV_HASS_URL}|${HASS_URL}|g")
+[ -n "$PREV_HASS_TOKEN" ] && [ "$PREV_HASS_TOKEN" != "__HASS_TOKEN_PLACEHOLDER__" ] && \
+    SED_ARGS+=(-e "s|${PREV_HASS_TOKEN}|${HASS_TOKEN}|g")
+[ -n "$PREV_INGRESS_PATH" ] && [ "$PREV_INGRESS_PATH" != "/__HA_INGRESS__" ] && \
+    SED_ARGS+=(-e "s|${PREV_INGRESS_PATH}|${INGRESS_PATH}|g")
 
-find /app -maxdepth 1 -name "*.js" -exec sed -i \
-    -e "s|__HASS_URL_PLACEHOLDER__|${HASS_URL}|g" \
-    -e "s|__HASS_TOKEN_PLACEHOLDER__|${HASS_TOKEN}|g" \
-    -e "s|/__HA_INGRESS__|${INGRESS_PATH}|g" \
-    -e "s|${PREV_HASS_URL}|${HASS_URL}|g" \
-    -e "s|${PREV_HASS_TOKEN}|${HASS_TOKEN}|g" \
-    -e "s|${PREV_INGRESS_PATH}|${INGRESS_PATH}|g" \
-    {} +
+# Replace build-time placeholders and previously set values
+find /app/.next -type f \( -name "*.js" -o -name "*.html" -o -name "*.json" -o -name "*.rsc" \) -exec sed -i "${SED_ARGS[@]}" {} +
+find /app -maxdepth 1 -name "*.js" -exec sed -i "${SED_ARGS[@]}" {} +
 
 # Save current values for next restart
 cat > "$PREV_VALUES_FILE" <<PREVEOF
