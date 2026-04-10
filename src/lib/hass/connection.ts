@@ -8,27 +8,47 @@ import {
 
 export type ConnectionState = "connecting" | "connected" | "disconnected" | "error";
 
-export async function connectToHA(): Promise<Connection> {
-  const url = process.env.NEXT_PUBLIC_HASS_URL;
-  const token = process.env.NEXT_PUBLIC_HASS_TOKEN;
+interface RuntimeConfig {
+  hassUrl: string;
+  hassToken: string;
+  ingressPath: string;
+}
 
-  if (!url || !token) {
+let cachedConfig: RuntimeConfig | null = null;
+
+async function loadConfig(): Promise<RuntimeConfig> {
+  if (cachedConfig) return cachedConfig;
+
+  // Resolve config.json relative to the current page path (works with Ingress prefix)
+  const base = window.location.pathname.replace(/\/[^/]*$/, "");
+  const res = await fetch(`${base}/config.json`);
+  if (!res.ok) {
+    throw new Error(`Failed to load config.json (${res.status}) — is the add-on running?`);
+  }
+  cachedConfig = await res.json();
+  return cachedConfig!;
+}
+
+export async function connectToHA(): Promise<Connection> {
+  const config = await loadConfig();
+
+  if (!config.hassUrl || !config.hassToken) {
     throw new Error(
-      "Missing NEXT_PUBLIC_HASS_URL or NEXT_PUBLIC_HASS_TOKEN in environment variables"
+      "Missing hassUrl or hassToken in config.json — configure hass_token in add-on settings"
     );
   }
 
-  const auth = createLongLivedTokenAuth(url, token);
+  const auth = createLongLivedTokenAuth(config.hassUrl, config.hassToken);
 
   try {
-    const connection = await createConnection({ auth, setupRetry: -1 });
+    const connection = await createConnection({ auth });
     return connection;
   } catch (err) {
     if (err === ERR_CANNOT_CONNECT) {
-      throw new Error(`Cannot connect to Home Assistant at ${url}`);
+      throw new Error(`Cannot connect to Home Assistant at ${config.hassUrl}`);
     }
     if (err === ERR_INVALID_AUTH) {
-      throw new Error("Invalid Home Assistant access token");
+      throw new Error("Invalid Home Assistant access token — create a new long-lived token");
     }
     throw err;
   }

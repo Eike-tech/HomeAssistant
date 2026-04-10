@@ -47,39 +47,25 @@ log "Starting Dashboard..."
 log "HA URL for browser: ${HASS_URL}"
 log "Token configured: $([ -n "$HASS_TOKEN" ] && echo 'yes' || echo 'NO - configure hass_token in add-on settings!')"
 
-# Load previously set values so we can replace them on restart
-PREV_VALUES_FILE="/app/.ha_prev_values"
-PREV_HASS_URL="__HASS_URL_PLACEHOLDER__"
-PREV_HASS_TOKEN="__HASS_TOKEN_PLACEHOLDER__"
-PREV_INGRESS_PATH="/__HA_INGRESS__"
+# Write runtime config for the client (replaces fragile sed-based placeholder system)
+mkdir -p /app/public
+cat > /app/public/config.json <<CFGEOF
+{
+  "hassUrl": "${HASS_URL}",
+  "hassToken": "${HASS_TOKEN}",
+  "ingressPath": "${INGRESS_PATH}"
+}
+CFGEOF
+log "Runtime config written to /app/public/config.json"
 
-if [ -f "$PREV_VALUES_FILE" ]; then
-    source "$PREV_VALUES_FILE"
-    log "Loaded previous values for re-replacement"
+# Replace asset prefix placeholder in built files (still needed for Next.js static paths)
+if [ -n "$INGRESS_PATH" ]; then
+    find /app/.next -type f \( -name "*.js" -o -name "*.html" -o -name "*.json" -o -name "*.rsc" \) \
+        -exec sed -i "s|/__HA_INGRESS__|${INGRESS_PATH}|g" {} +
+    find /app -maxdepth 1 -name "*.js" \
+        -exec sed -i "s|/__HA_INGRESS__|${INGRESS_PATH}|g" {} +
+    log "Asset prefix replaced: /__HA_INGRESS__ -> ${INGRESS_PATH}"
 fi
-
-# Build sed expressions — only add prev-value replacements if non-empty
-SED_ARGS=()
-SED_ARGS+=(-e "s|__HASS_URL_PLACEHOLDER__|${HASS_URL}|g")
-SED_ARGS+=(-e "s|__HASS_TOKEN_PLACEHOLDER__|${HASS_TOKEN}|g")
-SED_ARGS+=(-e "s|/__HA_INGRESS__|${INGRESS_PATH}|g")
-[ -n "$PREV_HASS_URL" ] && [ "$PREV_HASS_URL" != "__HASS_URL_PLACEHOLDER__" ] && \
-    SED_ARGS+=(-e "s|${PREV_HASS_URL}|${HASS_URL}|g")
-[ -n "$PREV_HASS_TOKEN" ] && [ "$PREV_HASS_TOKEN" != "__HASS_TOKEN_PLACEHOLDER__" ] && \
-    SED_ARGS+=(-e "s|${PREV_HASS_TOKEN}|${HASS_TOKEN}|g")
-[ -n "$PREV_INGRESS_PATH" ] && [ "$PREV_INGRESS_PATH" != "/__HA_INGRESS__" ] && \
-    SED_ARGS+=(-e "s|${PREV_INGRESS_PATH}|${INGRESS_PATH}|g")
-
-# Replace build-time placeholders and previously set values
-find /app/.next -type f \( -name "*.js" -o -name "*.html" -o -name "*.json" -o -name "*.rsc" \) -exec sed -i "${SED_ARGS[@]}" {} +
-find /app -maxdepth 1 -name "*.js" -exec sed -i "${SED_ARGS[@]}" {} +
-
-# Save current values for next restart
-cat > "$PREV_VALUES_FILE" <<PREVEOF
-PREV_HASS_URL="${HASS_URL}"
-PREV_HASS_TOKEN="${HASS_TOKEN}"
-PREV_INGRESS_PATH="${INGRESS_PATH}"
-PREVEOF
 
 # Start the Next.js server
 export NODE_ENV=production

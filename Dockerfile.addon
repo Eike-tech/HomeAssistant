@@ -8,9 +8,8 @@ COPY src ./src
 COPY public ./public
 COPY next.config.ts tsconfig.json postcss.config.mjs ./
 
-# Build with placeholders (replaced at runtime by run.sh)
-ENV NEXT_PUBLIC_HASS_URL=__HASS_URL_PLACEHOLDER__
-ENV NEXT_PUBLIC_HASS_TOKEN=__HASS_TOKEN_PLACEHOLDER__
+# Asset prefix placeholder (replaced at runtime by run.sh)
+# HASS_URL and HASS_TOKEN are loaded at runtime via config.json — no build-time placeholders needed
 ENV NEXT_PUBLIC_ASSET_PREFIX=/__HA_INGRESS__
 RUN npm run build
 

@@ -30,12 +30,15 @@ const HassContext = createContext<HassContextType>({
   error: null,
 });
 
+const RETRY_DELAY = 5000;
+
 export function HassProvider({ children }: { children: ReactNode }) {
   const [connection, setConnection] = useState<Connection | null>(null);
   const [entities, setEntities] = useState<HassEntities>({});
   const [connectionState, setConnectionState] = useState<ConnectionState>("connecting");
   const [error, setError] = useState<string | null>(null);
   const unsubRef = useRef<(() => void) | null>(null);
+  const retryTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const connect = useCallback(async () => {
     try {
@@ -54,6 +57,7 @@ export function HassProvider({ children }: { children: ReactNode }) {
 
       conn.addEventListener("reconnect-error", () => {
         setConnectionState("error");
+        setError("Connection lost — reconnecting...");
       });
 
       unsubRef.current = subscribeEntities(conn, (ents) => {
@@ -63,8 +67,16 @@ export function HassProvider({ children }: { children: ReactNode }) {
       setConnection(conn);
       setConnectionState("connected");
     } catch (err) {
+      const message = err instanceof Error ? err.message : "Unknown connection error";
+      console.error("[Dashboard] Connection failed:", message);
       setConnectionState("error");
-      setError(err instanceof Error ? err.message : "Unknown connection error");
+      setError(message);
+
+      // Retry after delay
+      retryTimerRef.current = setTimeout(() => {
+        console.log("[Dashboard] Retrying connection...");
+        connect();
+      }, RETRY_DELAY);
     }
   }, []);
 
@@ -74,6 +86,7 @@ export function HassProvider({ children }: { children: ReactNode }) {
     return () => {
       unsubRef.current?.();
       connection?.close();
+      if (retryTimerRef.current) clearTimeout(retryTimerRef.current);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
