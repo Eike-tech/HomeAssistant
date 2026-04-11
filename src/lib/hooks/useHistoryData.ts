@@ -94,6 +94,14 @@ function formatMonthLabel(monthKey: string): string {
   return d.toLocaleDateString("de-DE", { month: "short", year: "2-digit" });
 }
 
+// ── Timestamp helpers ──────────────────────────────────────
+
+/** HA Statistics API returns `start` as a Unix timestamp (seconds) — convert to ISO string */
+function startToIso(start: string | number): string {
+  if (typeof start === "string") return start;
+  return new Date(start * 1000).toISOString();
+}
+
 // ── Extract values from statistics entries ─────────────────
 
 /** Get the delta value for each entry — prefer `change`, fall back to computing deltas from `sum` */
@@ -223,10 +231,11 @@ export function useHistoryData(period: TimePeriod): HistoryData {
       const consumptionEntries = getEntries(consumptionStats, ids.consumption);
       const consumptionDeltas = extractDeltas(consumptionEntries);
       const consumption: ChartPoint[] = consumptionEntries.map((e, i) => {
-        const dateStr = e.start.slice(0, 10);
+        const iso = startToIso(e.start);
+        const dateStr = iso.slice(0, 10);
         return {
           date: dateStr,
-          label: statPeriod === "month" ? formatMonthLabel(e.start.slice(0, 7)) : formatDayLabel(dateStr),
+          label: statPeriod === "month" ? formatMonthLabel(iso.slice(0, 7)) : formatDayLabel(dateStr),
           value: consumptionDeltas[i],
         };
       });
@@ -235,10 +244,11 @@ export function useHistoryData(period: TimePeriod): HistoryData {
       const costEntries = getEntries(costStats, ids.cost);
       const costDeltas = extractDeltas(costEntries);
       const cost: ChartPoint[] = costEntries.map((e, i) => {
-        const dateStr = e.start.slice(0, 10);
+        const iso = startToIso(e.start);
+        const dateStr = iso.slice(0, 10);
         return {
           date: dateStr,
-          label: statPeriod === "month" ? formatMonthLabel(e.start.slice(0, 7)) : formatDayLabel(dateStr),
+          label: statPeriod === "month" ? formatMonthLabel(iso.slice(0, 7)) : formatDayLabel(dateStr),
           value: costDeltas[i],
         };
       });
@@ -262,9 +272,10 @@ export function useHistoryData(period: TimePeriod): HistoryData {
       // ── Load curve ──
       const loadCurveEntries = getEntries(loadCurveStats, ids.power);
       const loadCurve = loadCurveEntries.map((e) => {
-        const d = new Date(e.start);
+        const iso = startToIso(e.start);
+        const d = new Date(iso);
         return {
-          time: e.start,
+          time: iso,
           label: d.toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" }),
           power: e.mean ?? 0,
         };
@@ -272,13 +283,16 @@ export function useHistoryData(period: TimePeriod): HistoryData {
 
       // ── Spot price ──
       const spotEntries = getEntries(spotStats, ids.spot);
-      const spotPrice = spotEntries.map((e) => ({
-        date: e.start,
-        label: statPeriod === "month"
-          ? formatMonthLabel(e.start.slice(0, 7))
-          : formatDayLabel(e.start.slice(0, 10)),
-        value: (e.mean ?? 0) * 100, // EUR/kWh → ct/kWh
-      }));
+      const spotPrice = spotEntries.map((e) => {
+        const iso = startToIso(e.start);
+        return {
+          date: iso,
+          label: statPeriod === "month"
+            ? formatMonthLabel(iso.slice(0, 7))
+            : formatDayLabel(iso.slice(0, 10)),
+          value: (e.mean ?? 0) * 100, // EUR/kWh → ct/kWh
+        };
+      });
 
       console.log("[Verlauf] Processed:", {
         consumption: consumption.length,

@@ -1,8 +1,8 @@
 import { Connection } from "home-assistant-js-websocket";
 
 export interface StatisticsEntry {
-  start: string;
-  end: string;
+  start: string | number;
+  end: string | number;
   mean?: number;
   min?: number;
   max?: number;
