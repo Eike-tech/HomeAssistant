@@ -10,14 +10,10 @@ import { CostChart } from "@/components/history/CostChart";
 import { LoadCurveChart } from "@/components/history/LoadCurveChart";
 import { SpotPriceHistoryChart } from "@/components/history/SpotPriceHistoryChart";
 import { useHistoryData, type TimePeriod } from "@/lib/hooks/useHistoryData";
-import { useRecordedHistory } from "@/lib/hooks/useRecordedHistory";
 
 export function VerlaufPage() {
   const [period, setPeriod] = useState<TimePeriod>("7d");
   const data = useHistoryData(period);
-
-  // Activate the recorder — writes daily values to localStorage
-  useRecordedHistory();
 
   return (
     <main className="mx-auto max-w-7xl space-y-5 p-5 md:p-8">

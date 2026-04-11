@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo } from "react";
-import { useEntityNumericState, useEntityState } from "@/lib/hooks/useEntity";
+import { useEntityNumericState } from "@/lib/hooks/useEntity";
 import { ENTITIES } from "@/lib/hass/entities";
 
 export interface DeviceNode {
@@ -36,8 +36,6 @@ export function useEnergyFlow(): EnergyFlow {
   const eve2 = useConsumerPower(ENTITIES.energy.eveEnergy2Power);
   const shelly = useConsumerPower(ENTITIES.energy.shellyPower);
   const gefrierschrank = useConsumerPower(ENTITIES.energy.gefrierschrankPower);
-  const chargerPower = useConsumerPower(ENTITIES.car.chargerPower);
-  const isCharging = useEntityState(ENTITIES.car.chargingBinary);
   const appleTvBad = useConsumerPower(ENTITIES.energy.appleTvBadPower);
   const appleTvSchlaf = useConsumerPower(ENTITIES.energy.appleTvSchlafzimmerPower);
   const sonosBuro = useConsumerPower(ENTITIES.energy.sonosMoveBuroPower);
@@ -48,8 +46,6 @@ export function useEnergyFlow(): EnergyFlow {
 
   return useMemo(() => {
     const totalWatts = totalKw !== null ? totalKw * 1000 : 0;
-    const teslaWatts = isCharging === "on" ? chargerPower * 1000 : 0;
-
     const rawRooms: RoomNode[] = [
       {
         id: "wohnzimmer", label: "Wohnzimmer", icon: "sofa", color: "#c084fc",
@@ -98,13 +94,6 @@ export function useEnergyFlow(): EnergyFlow {
         ],
         totalPower: 0,
       },
-      {
-        id: "tesla", label: "Tesla", icon: "car", color: "#f87171",
-        devices: [
-          { id: "charger", label: "Laden", power: teslaWatts },
-        ],
-        totalPower: 0,
-      },
     ];
 
     // Calculate room totals and filter
@@ -120,5 +109,5 @@ export function useEnergyFlow(): EnergyFlow {
     const sonstige = Math.max(0, totalWatts - knownTotal);
 
     return { rooms, totalPower: totalWatts, sonstige };
-  }, [totalKw, eve1, eve2, shelly, gefrierschrank, chargerPower, isCharging, appleTvBad, appleTvSchlaf, sonosBuro, standleuchte, fotowand, tradfriBulb, wohnzimmerSpeaker]);
+  }, [totalKw, eve1, eve2, shelly, gefrierschrank, appleTvBad, appleTvSchlaf, sonosBuro, standleuchte, fotowand, tradfriBulb, wohnzimmerSpeaker]);
 }

@@ -188,7 +188,14 @@ export function SpotPriceChart() {
                   backdropFilter: "blur(20px)",
                   color: "rgba(255,255,255,0.9)",
                 }}
-                formatter={(value) => [`${Number(value).toFixed(2)} ct/kWh`, "Preis"]}
+                labelStyle={{ color: "rgba(255,255,255,0.7)" }}
+                formatter={(value: number, _name: string, props: { payload?: PriceBar }) => {
+                  const color = props.payload?.color || "#fbbf24";
+                  return [
+                    <span key="v" style={{ color }}>{Number(value).toFixed(2)} ct/kWh</span>,
+                    <span key="n" style={{ color }}>Preis</span>,
+                  ];
+                }}
               />
               {avgPrice !== null && (
                 <ReferenceLine

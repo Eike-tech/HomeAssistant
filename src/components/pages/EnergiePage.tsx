@@ -2,7 +2,6 @@
 
 import { Header } from "@/components/layout/Header";
 import { EnergyFlowDiagram } from "@/components/energy/SankeyDiagram";
-import { TeslaChargingCard } from "@/components/energy/TeslaChargingCard";
 import { EnergyStatsCard } from "@/components/energy/EnergyStatsCard";
 import { EnhancedSpotPriceChart } from "@/components/energy/EnhancedSpotPriceChart";
 
@@ -15,11 +14,8 @@ export function EnergiePage() {
       {/* Energy Flow Diagram */}
       <EnergyFlowDiagram />
 
-      {/* Tesla + Stats Grid */}
-      <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
-        <TeslaChargingCard />
-        <EnergyStatsCard />
-      </div>
+      {/* Energy Stats */}
+      <EnergyStatsCard />
 
       {/* Price Chart */}
       <EnhancedSpotPriceChart />
