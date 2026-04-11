@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { useHass } from "./useHass";
-import { fetchStatistics } from "@/lib/hass/history";
+import { fetchStatistics, listStatisticIds, type StatisticsEntry } from "@/lib/hass/history";
 import { ENTITIES } from "@/lib/hass/entities";
 
 export type TimePeriod = "7d" | "30d" | "12m" | "year";
@@ -94,6 +94,38 @@ function formatMonthLabel(monthKey: string): string {
   return d.toLocaleDateString("de-DE", { month: "short", year: "2-digit" });
 }
 
+// ── Extract values from statistics entries ─────────────────
+
+/** Get the delta value for each entry — prefer `change`, fall back to computing deltas from `sum` */
+function extractDeltas(entries: StatisticsEntry[]): number[] {
+  // If change is available, use it
+  if (entries.length > 0 && entries[0].change !== undefined) {
+    return entries.map((e) => e.change ?? 0);
+  }
+  // Fall back to sum deltas
+  if (entries.length > 0 && entries[0].sum !== undefined) {
+    return entries.map((e, i) => {
+      if (i === 0) return e.sum ?? 0;
+      const prev = entries[i - 1].sum ?? 0;
+      const curr = e.sum ?? 0;
+      return Math.max(0, curr - prev);
+    });
+  }
+  // Last resort: use state or mean
+  return entries.map((e) => e.state ?? e.mean ?? 0);
+}
+
+/** Get the first matching entries from a statistics result */
+function getEntries(result: Record<string, StatisticsEntry[]>, preferredKey: string): StatisticsEntry[] {
+  // Try exact key first
+  if (result[preferredKey]?.length) return result[preferredKey];
+  // Fall back to first non-empty key
+  for (const entries of Object.values(result)) {
+    if (entries?.length) return entries;
+  }
+  return [];
+}
+
 // ── Main hook ──────────────────────────────────────────────
 
 const emptyKpis: Kpis = {
@@ -118,19 +150,52 @@ export function useHistoryData(period: TimePeriod): HistoryData {
     recordedDays: 0,
   });
 
+  // Cache resolved statistic IDs
+  const resolvedIdsRef = useRef<Record<string, string>>({});
+
   const load = useCallback(async () => {
     if (!connection) return;
 
     setData((prev) => ({ ...prev, loading: true, error: null }));
 
     try {
-      const { start, end, statPeriod, days } = getPeriodRange(period);
-      const { prevStart, prevEnd } = getPrevPeriodRange(period, start);
+      // ── Resolve statistic IDs (once) ──
+      if (Object.keys(resolvedIdsRef.current).length === 0) {
+        const allIds = await listStatisticIds(connection);
+        console.log("[Verlauf] Available statistic IDs:", allIds.map((s) => s.statistic_id));
 
-      const consumptionId = ENTITIES.energy.dailyConsumption;
-      const costId = ENTITIES.energy.dailyCost;
-      const powerId = ENTITIES.energy.power;
-      const spotId = ENTITIES.energy.spotPrice;
+        const entityKeys = {
+          consumption: ENTITIES.energy.dailyConsumption,
+          cost: ENTITIES.energy.dailyCost,
+          power: ENTITIES.energy.power,
+          spot: ENTITIES.energy.spotPrice,
+        };
+
+        for (const [key, entityId] of Object.entries(entityKeys)) {
+          // Exact match
+          const exact = allIds.find((s) => s.statistic_id === entityId);
+          if (exact) {
+            resolvedIdsRef.current[key] = exact.statistic_id;
+          } else {
+            // Partial match: find statistic that contains the entity's unique part
+            const parts = entityId.split(".");
+            const sensorName = parts[parts.length - 1];
+            const partial = allIds.find((s) => s.statistic_id.includes(sensorName));
+            if (partial) {
+              console.log(`[Verlauf] Resolved ${entityId} → ${partial.statistic_id}`);
+              resolvedIdsRef.current[key] = partial.statistic_id;
+            } else {
+              console.warn(`[Verlauf] No statistic found for ${entityId}`);
+              resolvedIdsRef.current[key] = entityId; // use entity_id as fallback
+            }
+          }
+        }
+        console.log("[Verlauf] Resolved IDs:", resolvedIdsRef.current);
+      }
+
+      const ids = resolvedIdsRef.current;
+      const { start, end, statPeriod } = getPeriodRange(period);
+      const { prevStart, prevEnd } = getPrevPeriodRange(period, start);
 
       // Load curve: last 24h at 5-minute resolution
       const loadCurveStart = new Date();
@@ -139,52 +204,63 @@ export function useHistoryData(period: TimePeriod): HistoryData {
       // Fetch all statistics in parallel
       const [consumptionStats, costStats, prevConsumptionStats, prevCostStats, loadCurveStats, spotStats] =
         await Promise.all([
-          fetchStatistics(connection, [consumptionId], start, end, statPeriod),
-          fetchStatistics(connection, [costId], start, end, statPeriod),
-          fetchStatistics(connection, [consumptionId], prevStart, prevEnd, statPeriod),
-          fetchStatistics(connection, [costId], prevStart, prevEnd, statPeriod),
-          fetchStatistics(connection, [powerId], loadCurveStart, new Date(), "5minute"),
-          fetchStatistics(connection, [spotId], start, end, statPeriod),
+          fetchStatistics(connection, [ids.consumption], start, end, statPeriod),
+          fetchStatistics(connection, [ids.cost], start, end, statPeriod),
+          fetchStatistics(connection, [ids.consumption], prevStart, prevEnd, statPeriod),
+          fetchStatistics(connection, [ids.cost], prevStart, prevEnd, statPeriod),
+          fetchStatistics(connection, [ids.power], loadCurveStart, new Date(), "5minute"),
+          fetchStatistics(connection, [ids.spot], start, end, statPeriod),
         ]);
 
+      console.log("[Verlauf] Raw stats:", {
+        consumption: consumptionStats,
+        cost: costStats,
+        loadCurve: loadCurveStats,
+        spot: spotStats,
+      });
+
       // ── Consumption chart data ──
-      const consumptionEntries = consumptionStats[consumptionId] ?? [];
-      const consumption: ChartPoint[] = consumptionEntries.map((e) => {
+      const consumptionEntries = getEntries(consumptionStats, ids.consumption);
+      const consumptionDeltas = extractDeltas(consumptionEntries);
+      const consumption: ChartPoint[] = consumptionEntries.map((e, i) => {
         const dateStr = e.start.slice(0, 10);
         return {
           date: dateStr,
           label: statPeriod === "month" ? formatMonthLabel(e.start.slice(0, 7)) : formatDayLabel(dateStr),
-          value: e.change ?? 0,
+          value: consumptionDeltas[i],
         };
       });
 
       // ── Cost chart data ──
-      const costEntries = costStats[costId] ?? [];
-      const cost: ChartPoint[] = costEntries.map((e) => {
+      const costEntries = getEntries(costStats, ids.cost);
+      const costDeltas = extractDeltas(costEntries);
+      const cost: ChartPoint[] = costEntries.map((e, i) => {
         const dateStr = e.start.slice(0, 10);
         return {
           date: dateStr,
           label: statPeriod === "month" ? formatMonthLabel(e.start.slice(0, 7)) : formatDayLabel(dateStr),
-          value: e.change ?? 0,
+          value: costDeltas[i],
         };
       });
 
       // ── KPIs ──
-      const totalConsumption = consumptionEntries.reduce((sum, e) => sum + (e.change ?? 0), 0);
-      const totalCost = costEntries.reduce((sum, e) => sum + (e.change ?? 0), 0);
+      const totalConsumption = consumptionDeltas.reduce((sum, v) => sum + v, 0);
+      const totalCost = costDeltas.reduce((sum, v) => sum + v, 0);
       const numDays = consumptionEntries.length || 1;
 
-      const prevConsumptionEntries = prevConsumptionStats[consumptionId] ?? [];
-      const prevCostEntries = prevCostStats[costId] ?? [];
+      const prevConsumptionEntries = getEntries(prevConsumptionStats, ids.consumption);
+      const prevCostEntries = getEntries(prevCostStats, ids.cost);
+      const prevConsumptionDeltas = extractDeltas(prevConsumptionEntries);
+      const prevCostDeltas = extractDeltas(prevCostEntries);
       const prevTotalConsumption = prevConsumptionEntries.length > 0
-        ? prevConsumptionEntries.reduce((sum, e) => sum + (e.change ?? 0), 0)
+        ? prevConsumptionDeltas.reduce((sum, v) => sum + v, 0)
         : null;
       const prevTotalCost = prevCostEntries.length > 0
-        ? prevCostEntries.reduce((sum, e) => sum + (e.change ?? 0), 0)
+        ? prevCostDeltas.reduce((sum, v) => sum + v, 0)
         : null;
 
       // ── Load curve ──
-      const loadCurveEntries = loadCurveStats[powerId] ?? [];
+      const loadCurveEntries = getEntries(loadCurveStats, ids.power);
       const loadCurve = loadCurveEntries.map((e) => {
         const d = new Date(e.start);
         return {
@@ -195,7 +271,7 @@ export function useHistoryData(period: TimePeriod): HistoryData {
       });
 
       // ── Spot price ──
-      const spotEntries = spotStats[spotId] ?? [];
+      const spotEntries = getEntries(spotStats, ids.spot);
       const spotPrice = spotEntries.map((e) => ({
         date: e.start,
         label: statPeriod === "month"
@@ -203,6 +279,13 @@ export function useHistoryData(period: TimePeriod): HistoryData {
           : formatDayLabel(e.start.slice(0, 10)),
         value: (e.mean ?? 0) * 100, // EUR/kWh → ct/kWh
       }));
+
+      console.log("[Verlauf] Processed:", {
+        consumption: consumption.length,
+        cost: cost.length,
+        loadCurve: loadCurve.length,
+        spotPrice: spotPrice.length,
+      });
 
       setData({
         consumption,
@@ -222,6 +305,7 @@ export function useHistoryData(period: TimePeriod): HistoryData {
         recordedDays: consumptionEntries.length,
       });
     } catch (err) {
+      console.error("[Verlauf] Error loading history:", err);
       setData((prev) => ({
         ...prev,
         loading: false,
