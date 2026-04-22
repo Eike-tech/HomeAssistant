@@ -1,6 +1,6 @@
 "use client";
 
-import { Monitor, Sofa, Bath, BedDouble, TreePine, Car, Zap, Home, TrendingUp, TrendingDown, Minus, Snowflake } from "lucide-react";
+import { Monitor, Sofa, Bath, BedDouble, TreePine, Car, Zap, Home, TrendingUp, TrendingDown, Minus, Snowflake, WashingMachine } from "lucide-react";
 import { useEnergyFlow, type RoomNode } from "@/lib/hooks/useEnergyFlow";
 import { useEntityNumericState } from "@/lib/hooks/useEntity";
 import { ENTITIES } from "@/lib/hass/entities";
@@ -13,6 +13,7 @@ const roomIcons: Record<string, typeof Monitor> = {
   tree: TreePine,
   car: Car,
   snowflake: Snowflake,
+  "washing-machine": WashingMachine,
 };
 
 function formatW(watts: number): string {

@@ -35,7 +35,8 @@ export function useEnergyFlow(): EnergyFlow {
   const eve1 = useConsumerPower(ENTITIES.energy.eveEnergy1Power);
   const eve2 = useConsumerPower(ENTITIES.energy.eveEnergy2Power);
   const shelly = useConsumerPower(ENTITIES.energy.shellyPower);
-  const gefrierschrank = useConsumerPower(ENTITIES.energy.gefrierschrankPower);
+  const trockner = useConsumerPower(ENTITIES.energy.trocknerPower);
+  const waschmaschine = useConsumerPower(ENTITIES.energy.waschmaschinePower);
   const appleTvBad = useConsumerPower(ENTITIES.energy.appleTvBadPower);
   const appleTvSchlaf = useConsumerPower(ENTITIES.energy.appleTvSchlafzimmerPower);
   const sonosBuro = useConsumerPower(ENTITIES.energy.sonosMoveBuroPower);
@@ -88,9 +89,10 @@ export function useEnergyFlow(): EnergyFlow {
         totalPower: 0,
       },
       {
-        id: "kueche", label: "Küche", icon: "snowflake", color: "#38bdf8",
+        id: "hauswirtschaftsraum", label: "Hauswirtschaftsraum", icon: "washing-machine", color: "#38bdf8",
         devices: [
-          { id: "gefrierschrank", label: "Gefrierschrank", power: gefrierschrank },
+          { id: "waschmaschine", label: "Waschmaschine", power: waschmaschine },
+          { id: "trockner", label: "Trockner", power: trockner },
         ],
         totalPower: 0,
       },
@@ -109,5 +111,5 @@ export function useEnergyFlow(): EnergyFlow {
     const sonstige = Math.max(0, totalWatts - knownTotal);
 
     return { rooms, totalPower: totalWatts, sonstige };
-  }, [totalKw, eve1, eve2, shelly, gefrierschrank, appleTvBad, appleTvSchlaf, sonosBuro, standleuchte, fotowand, tradfriBulb, wohnzimmerSpeaker]);
+  }, [totalKw, eve1, eve2, shelly, trockner, waschmaschine, appleTvBad, appleTvSchlaf, sonosBuro, standleuchte, fotowand, tradfriBulb, wohnzimmerSpeaker]);
 }
