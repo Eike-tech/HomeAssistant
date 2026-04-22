@@ -35,20 +35,20 @@ function isStale(isoString: string | undefined, thresholdMinutes = 5): boolean {
   return (Date.now() - new Date(isoString).getTime()) / 60000 > thresholdMinutes;
 }
 
-const consumers = [
-  { entity: ENTITIES.energy.eveEnergy1Power, name: "Workstation" },
-  { entity: ENTITIES.energy.eveEnergy2Power, name: "Entertainment" },
-  { entity: ENTITIES.energy.shellyPower, name: "Garten" },
-  { entity: ENTITIES.energy.trocknerPower, name: "Trockner" },
-  { entity: ENTITIES.energy.waschmaschinePower, name: "Waschmaschine" },
+const consumers: { entities: readonly string[]; name: string }[] = [
+  { entities: [ENTITIES.energy.eveEnergy1Power], name: "Workstation" },
+  { entities: [ENTITIES.energy.eveEnergy2Power], name: "Entertainment" },
+  { entities: [ENTITIES.energy.shellyPower], name: "Garten" },
+  { entities: [ENTITIES.energy.trocknerPower, ENTITIES.energy.waschmaschinePower], name: "Hauswirtschaftsraum" },
 ];
 
-function ConsumerRow({ entity, name }: { entity: string; name: string }) {
-  const e = useEntity(entity);
-  const power = e ? parseFloat(e.state) : null;
-  const watts = power ?? 0;
-  const isActive = watts > 1;
-  const stale = isStale(e?.last_updated);
+function ConsumerRow({ entities, name }: { entities: readonly string[]; name: string }) {
+  const states = entities.map((id) => useEntity(id));
+  const powers = states.map((e) => (e ? parseFloat(e.state) : NaN));
+  const anyValid = powers.some((p) => !isNaN(p));
+  const totalPower = powers.reduce((sum, p) => sum + (isNaN(p) ? 0 : p), 0);
+  const isActive = totalPower > 1;
+  const stale = states.every((e) => isStale(e?.last_updated));
 
   return (
     <div className="flex items-center justify-between">
@@ -57,7 +57,7 @@ function ConsumerRow({ entity, name }: { entity: string; name: string }) {
         <span className="text-sm">{name}</span>
       </div>
       <span className={`text-sm font-medium tabular-nums ${stale ? "text-orange-400/70" : isActive ? "text-foreground" : "text-muted-foreground"}`}>
-        {power !== null && !isNaN(power) ? `${Math.round(power)} W` : "—"}
+        {anyValid ? `${Math.round(totalPower)} W` : "—"}
       </span>
     </div>
   );
@@ -125,7 +125,7 @@ export function EnergyOverviewCard() {
         <div className="space-y-2.5">
           <span className="text-[11px] uppercase tracking-wider text-muted-foreground">Verbraucher</span>
           {consumers.map((c) => (
-            <ConsumerRow key={c.entity} entity={c.entity} name={c.name} />
+            <ConsumerRow key={c.name} entities={c.entities} name={c.name} />
           ))}
         </div>
 
