@@ -102,20 +102,20 @@ export function EnergyOverviewCard() {
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="text-muted-foreground font-medium text-sm">
-          Energie
-        </CardTitle>
+        <CardTitle>Energie</CardTitle>
         <span className={`text-[11px] tabular-nums ${stale ? "text-orange-400" : "text-muted-foreground/60"}`}>
           {agoText}
         </span>
       </CardHeader>
-      <CardContent className="space-y-5">
+      <CardContent className="space-y-6">
         {/* Hero: Total Power */}
         <div>
-          <span className={`text-4xl font-light tracking-tight tabular-nums ${stale ? "text-muted-foreground/50" : ""}`}>
+          <span
+            className={`display-num text-[56px] font-extralight leading-none ${stale ? "text-muted-foreground/50" : ""}`}
+          >
             {formatPower(power)}
           </span>
-          <p className="text-xs text-muted-foreground mt-1">Gesamtverbrauch</p>
+          <p className="text-xs text-muted-foreground mt-2">Gesamtverbrauch</p>
         </div>
 
         {/* CO2 / Green Energy Badge */}
@@ -123,23 +123,23 @@ export function EnergyOverviewCard() {
 
         {/* Individual Consumers */}
         <div className="space-y-2.5">
-          <span className="text-[11px] uppercase tracking-wider text-muted-foreground">Verbraucher</span>
+          <span className="text-[11px] uppercase tracking-[0.08em] font-medium text-muted-foreground/80">Verbraucher</span>
           {consumers.map((c) => (
             <ConsumerRow key={c.entity} entity={c.entity} name={c.name} />
           ))}
         </div>
 
         {/* Stats Grid */}
-        <div className="grid grid-cols-2 gap-4">
-          <div className="rounded-2xl bg-white/[0.04] px-4 py-3">
-            <span className="text-[11px] uppercase tracking-wider text-muted-foreground">Heute</span>
-            <p className="mt-1 text-lg font-semibold tabular-nums">{formatCurrency(dailyCost)}</p>
-            <p className="text-xs text-muted-foreground tabular-nums">{formatEnergy(dailyConsumption)}</p>
+        <div className="grid grid-cols-2 gap-3">
+          <div className="surface-inset rounded-2xl px-4 py-3">
+            <span className="text-[10px] uppercase tracking-[0.08em] font-medium text-muted-foreground/80">Heute</span>
+            <p className="mt-1.5 display-num text-[22px] font-semibold leading-none">{formatCurrency(dailyCost)}</p>
+            <p className="text-xs text-muted-foreground tabular-nums mt-1">{formatEnergy(dailyConsumption)}</p>
           </div>
-          <div className="rounded-2xl bg-white/[0.04] px-4 py-3">
-            <span className="text-[11px] uppercase tracking-wider text-muted-foreground">Monat</span>
-            <p className="mt-1 text-lg font-semibold tabular-nums">{formatCurrency(monthlyCost)}</p>
-            <p className="text-xs text-muted-foreground tabular-nums">{formatEnergy(monthlyConsumption)}</p>
+          <div className="surface-inset rounded-2xl px-4 py-3">
+            <span className="text-[10px] uppercase tracking-[0.08em] font-medium text-muted-foreground/80">Monat</span>
+            <p className="mt-1.5 display-num text-[22px] font-semibold leading-none">{formatCurrency(monthlyCost)}</p>
+            <p className="text-xs text-muted-foreground tabular-nums mt-1">{formatEnergy(monthlyConsumption)}</p>
           </div>
         </div>
       </CardContent>

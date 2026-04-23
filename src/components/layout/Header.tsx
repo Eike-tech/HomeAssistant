@@ -77,17 +77,25 @@ export function Header() {
   const personName = person?.attributes?.friendly_name ?? "";
 
   return (
-    <div className="space-y-2">
-      <header className="flex items-center justify-between px-2 py-3">
+    <div className="space-y-3">
+      <header className="flex items-center justify-between px-1 py-2">
         <div className="flex items-center gap-4">
-          <div className="flex items-center gap-2">
-            <span className="text-3xl">{weatherIcon}</span>
+          <div
+            className="flex items-center gap-3 rounded-full pl-2 pr-4 py-1.5"
+            style={{
+              background: "linear-gradient(180deg, oklch(1 0 0 / 0.06), oklch(1 0 0 / 0.02))",
+              boxShadow: "inset 0 1px 0 0 oklch(1 0 0 / 0.08), inset 0 0 0 1px oklch(1 0 0 / 0.04)",
+              backdropFilter: "blur(18px) saturate(140%)",
+              WebkitBackdropFilter: "blur(18px) saturate(140%)",
+            }}
+          >
+            <span className="text-2xl leading-none">{weatherIcon}</span>
             <div className="flex flex-col">
-              <span className="text-xl font-semibold tracking-tight">
+              <span className="text-[17px] font-semibold tracking-tight leading-tight">
                 {temp !== undefined ? formatTemperature(temp) : "—"}
               </span>
-              <span className="text-xs text-muted-foreground">
-                {personName} · {personState}
+              <span className="text-[11px] text-muted-foreground leading-tight">
+                {personName ? `${personName} · ${personState}` : personState}
               </span>
             </div>
           </div>
@@ -96,7 +104,10 @@ export function Header() {
 
         <div className="flex items-center gap-5">
           <ConnectionStatus />
-          <time suppressHydrationWarning className="text-3xl font-light tracking-tight tabular-nums text-foreground/80">
+          <time
+            suppressHydrationWarning
+            className="display-num text-[40px] font-extralight leading-none text-foreground/90"
+          >
             {time ? time.toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" }) : "\u2014"}
           </time>
         </div>
