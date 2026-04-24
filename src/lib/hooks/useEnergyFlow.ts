@@ -41,8 +41,8 @@ export function useEnergyFlow(): EnergyFlow {
   const netzwerk = useConsumerPower(ENTITIES.energy.netzwerkPower);
   const geschirrspuler = useConsumerPower(ENTITIES.energy.geschirrspulerPower);
   const gefrierschrank = useConsumerPower(ENTITIES.energy.gefrierschrankPower);
-  const appleTvBad = useConsumerPower(ENTITIES.energy.appleTvBadPower);
-  const appleTvSchlaf = useConsumerPower(ENTITIES.energy.appleTvSchlafzimmerPower);
+  const homePodBad = useConsumerPower(ENTITIES.energy.homePodBadPower);
+  const homePodSchlaf = useConsumerPower(ENTITIES.energy.homePodSchlafzimmerPower);
   const sonosBuro = useConsumerPower(ENTITIES.energy.sonosMoveBuroPower);
   const standleuchte = useConsumerPower(ENTITIES.energy.standleuchtePower);
   const fotowand = useConsumerPower(ENTITIES.energy.fotowandPower);
@@ -74,14 +74,14 @@ export function useEnergyFlow(): EnergyFlow {
       {
         id: "bad", label: "Bad", icon: "bath", color: "#38bdf8",
         devices: [
-          { id: "homepod-bad", label: "HomePod mini", power: appleTvBad },
+          { id: "homepod-bad", label: "HomePod mini", power: homePodBad },
         ],
         totalPower: 0,
       },
       {
         id: "schlafzimmer", label: "Schlafzimmer", icon: "bed", color: "#a78bfa",
         devices: [
-          { id: "homepod-schlaf", label: "HomePod mini", power: appleTvSchlaf },
+          { id: "homepod-schlaf", label: "HomePod mini", power: homePodSchlaf },
         ],
         totalPower: 0,
       },
@@ -130,5 +130,5 @@ export function useEnergyFlow(): EnergyFlow {
     const sonstige = Math.max(0, totalWatts - knownTotal);
 
     return { rooms, allRooms, totalPower: totalWatts, sonstige };
-  }, [totalKw, eve1, eve2, shelly, trockner, waschmaschine, netzwerk, geschirrspuler, gefrierschrank, appleTvBad, appleTvSchlaf, sonosBuro, standleuchte, fotowand, tradfriBulb, wohnzimmerSpeaker]);
+  }, [totalKw, eve1, eve2, shelly, trockner, waschmaschine, netzwerk, geschirrspuler, gefrierschrank, homePodBad, homePodSchlaf, sonosBuro, standleuchte, fotowand, tradfriBulb, wohnzimmerSpeaker]);
 }

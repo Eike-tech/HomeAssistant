@@ -36,8 +36,8 @@ export const ENTITIES = {
     co2Intensity: "sensor.electricity_maps_co2_intensitat",
     fossilShare: "sensor.electricity_maps_anteil_fossiler_energietrager",
     // Powercalc individual device power sensors
-    appleTvBadPower: "sensor.apple_tv_bad_power",
-    appleTvSchlafzimmerPower: "sensor.apple_tv_schlafzimmer_power",
+    homePodBadPower: "sensor.bad_power",
+    homePodSchlafzimmerPower: "sensor.schlafzimmer_power",
     sonosMoveBuroPower: "sensor.sonos_move_2_buro_power",
     standleuchtePower: "sensor.standleuchte_power",
     fotowandPower: "sensor.fotowand_power",
