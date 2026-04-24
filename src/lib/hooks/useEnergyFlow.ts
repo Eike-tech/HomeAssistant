@@ -56,7 +56,6 @@ export function useEnergyFlow(): EnergyFlow {
         id: "wohnzimmer", label: "Wohnzimmer", icon: "sofa", color: "#c084fc",
         devices: [
           { id: "entertainment", label: "Entertainment", power: eve2 },
-          { id: "speaker", label: "Sonos", power: wohnzimmerSpeaker },
           { id: "standleuchte", label: "Standleuchte", power: standleuchte },
           { id: "fotowand", label: "Fotowand", power: fotowand },
           { id: "tradfri", label: "TRADFRI", power: tradfriBulb },
@@ -68,6 +67,7 @@ export function useEnergyFlow(): EnergyFlow {
         devices: [
           { id: "workstation", label: "Workstation", power: eve1 },
           { id: "sonos-buro", label: "Sonos Move", power: sonosBuro },
+          { id: "netzwerk", label: "Netzwerk", power: netzwerk },
         ],
         totalPower: 0,
       },
@@ -97,6 +97,7 @@ export function useEnergyFlow(): EnergyFlow {
         devices: [
           { id: "waschmaschine", label: "Waschmaschine", power: waschmaschine },
           { id: "trockner", label: "Trockner", power: trockner },
+          { id: "gefrierschrank", label: "Gefrierschrank", power: gefrierschrank },
         ],
         totalPower: 0,
       },
@@ -104,14 +105,6 @@ export function useEnergyFlow(): EnergyFlow {
         id: "kueche", label: "Küche", icon: "utensils", color: "#fb923c",
         devices: [
           { id: "geschirrspueler", label: "Geschirrspüler", power: geschirrspuler },
-          { id: "gefrierschrank", label: "Gefrierschrank", power: gefrierschrank },
-        ],
-        totalPower: 0,
-      },
-      {
-        id: "netzwerk", label: "Netzwerk", icon: "router", color: "#22d3ee",
-        devices: [
-          { id: "netzwerk", label: "Netzwerk", power: netzwerk },
         ],
         totalPower: 0,
       },
