@@ -37,6 +37,9 @@ export function useEnergyFlow(): EnergyFlow {
   const shelly = useConsumerPower(ENTITIES.energy.shellyPower);
   const trockner = useConsumerPower(ENTITIES.energy.trocknerPower);
   const waschmaschine = useConsumerPower(ENTITIES.energy.waschmaschinePower);
+  const netzwerk = useConsumerPower(ENTITIES.energy.netzwerkPower);
+  const geschirrspuler = useConsumerPower(ENTITIES.energy.geschirrspulerPower);
+  const gefrierschrank = useConsumerPower(ENTITIES.energy.gefrierschrankPower);
   const appleTvBad = useConsumerPower(ENTITIES.energy.appleTvBadPower);
   const appleTvSchlaf = useConsumerPower(ENTITIES.energy.appleTvSchlafzimmerPower);
   const sonosBuro = useConsumerPower(ENTITIES.energy.sonosMoveBuroPower);
@@ -84,7 +87,7 @@ export function useEnergyFlow(): EnergyFlow {
       {
         id: "garten", label: "Garten", icon: "tree", color: "#34d399",
         devices: [
-          { id: "shelly", label: "Shelly", power: shelly },
+          { id: "shelly", label: "Außensteckdose", power: shelly },
         ],
         totalPower: 0,
       },
@@ -93,6 +96,21 @@ export function useEnergyFlow(): EnergyFlow {
         devices: [
           { id: "waschmaschine", label: "Waschmaschine", power: waschmaschine },
           { id: "trockner", label: "Trockner", power: trockner },
+        ],
+        totalPower: 0,
+      },
+      {
+        id: "kueche", label: "Küche", icon: "utensils", color: "#fb923c",
+        devices: [
+          { id: "geschirrspueler", label: "Geschirrspüler", power: geschirrspuler },
+          { id: "gefrierschrank", label: "Gefrierschrank", power: gefrierschrank },
+        ],
+        totalPower: 0,
+      },
+      {
+        id: "netzwerk", label: "Netzwerk", icon: "router", color: "#22d3ee",
+        devices: [
+          { id: "netzwerk", label: "Netzwerk", power: netzwerk },
         ],
         totalPower: 0,
       },
@@ -111,5 +129,5 @@ export function useEnergyFlow(): EnergyFlow {
     const sonstige = Math.max(0, totalWatts - knownTotal);
 
     return { rooms, totalPower: totalWatts, sonstige };
-  }, [totalKw, eve1, eve2, shelly, trockner, waschmaschine, appleTvBad, appleTvSchlaf, sonosBuro, standleuchte, fotowand, tradfriBulb, wohnzimmerSpeaker]);
+  }, [totalKw, eve1, eve2, shelly, trockner, waschmaschine, netzwerk, geschirrspuler, gefrierschrank, appleTvBad, appleTvSchlaf, sonosBuro, standleuchte, fotowand, tradfriBulb, wohnzimmerSpeaker]);
 }

@@ -38,9 +38,12 @@ function isStale(isoString: string | undefined, thresholdMinutes = 5): boolean {
 const consumers = [
   { entity: ENTITIES.energy.eveEnergy1Power, name: "Workstation" },
   { entity: ENTITIES.energy.eveEnergy2Power, name: "Entertainment" },
-  { entity: ENTITIES.energy.shellyPower, name: "Garten" },
+  { entity: ENTITIES.energy.shellyPower, name: "Außensteckdose" },
   { entity: ENTITIES.energy.trocknerPower, name: "Trockner" },
   { entity: ENTITIES.energy.waschmaschinePower, name: "Waschmaschine" },
+  { entity: ENTITIES.energy.geschirrspulerPower, name: "Geschirrspüler" },
+  { entity: ENTITIES.energy.gefrierschrankPower, name: "Gefrierschrank" },
+  { entity: ENTITIES.energy.netzwerkPower, name: "Netzwerk" },
 ];
 
 function ConsumerRow({ entity, name }: { entity: string; name: string }) {
