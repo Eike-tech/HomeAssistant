@@ -3,6 +3,7 @@
 import { Header } from "@/components/layout/Header";
 import { EnergyFlowDiagram } from "@/components/energy/SankeyDiagram";
 import { EnergyStatsCard } from "@/components/energy/EnergyStatsCard";
+import { RoomBreakdownCard } from "@/components/energy/RoomBreakdownCard";
 import { EnhancedSpotPriceChart } from "@/components/energy/EnhancedSpotPriceChart";
 
 export function EnergiePage() {
@@ -13,6 +14,9 @@ export function EnergiePage() {
 
       {/* Energy Flow Diagram */}
       <EnergyFlowDiagram />
+
+      {/* Room breakdown — all consumers grouped by room */}
+      <RoomBreakdownCard />
 
       {/* Energy Stats */}
       <EnergyStatsCard />

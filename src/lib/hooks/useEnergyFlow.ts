@@ -21,6 +21,7 @@ export interface RoomNode {
 
 export interface EnergyFlow {
   rooms: RoomNode[];
+  allRooms: RoomNode[];
   totalPower: number;
   sonstige: number;
 }
@@ -116,18 +117,25 @@ export function useEnergyFlow(): EnergyFlow {
       },
     ];
 
-    // Calculate room totals and filter
-    const rooms = rawRooms
+    // All rooms with all devices + room totals (unfiltered), sorted by power
+    const allRooms = rawRooms
+      .map((room) => ({
+        ...room,
+        totalPower: room.devices.reduce((sum, d) => sum + d.power, 0),
+      }))
+      .sort((a, b) => b.totalPower - a.totalPower);
+
+    // Filtered view for the flow diagram (only active rooms/devices)
+    const rooms = allRooms
       .map((room) => {
         const activeDevices = room.devices.filter((d) => d.power >= 0.5);
         return { ...room, devices: activeDevices, totalPower: activeDevices.reduce((sum, d) => sum + d.power, 0) };
       })
-      .filter((room) => room.totalPower >= 0.5)
-      .sort((a, b) => b.totalPower - a.totalPower);
+      .filter((room) => room.totalPower >= 0.5);
 
     const knownTotal = rooms.reduce((sum, r) => sum + r.totalPower, 0);
     const sonstige = Math.max(0, totalWatts - knownTotal);
 
-    return { rooms, totalPower: totalWatts, sonstige };
+    return { rooms, allRooms, totalPower: totalWatts, sonstige };
   }, [totalKw, eve1, eve2, shelly, trockner, waschmaschine, netzwerk, geschirrspuler, gefrierschrank, appleTvBad, appleTvSchlaf, sonosBuro, standleuchte, fotowand, tradfriBulb, wohnzimmerSpeaker]);
 }
