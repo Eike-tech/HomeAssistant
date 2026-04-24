@@ -74,14 +74,14 @@ export function useEnergyFlow(): EnergyFlow {
       {
         id: "bad", label: "Bad", icon: "bath", color: "#38bdf8",
         devices: [
-          { id: "appletv-bad", label: "Apple TV", power: appleTvBad },
+          { id: "homepod-bad", label: "HomePod mini", power: appleTvBad },
         ],
         totalPower: 0,
       },
       {
         id: "schlafzimmer", label: "Schlafzimmer", icon: "bed", color: "#a78bfa",
         devices: [
-          { id: "appletv-schlaf", label: "Apple TV", power: appleTvSchlaf },
+          { id: "homepod-schlaf", label: "HomePod mini", power: appleTvSchlaf },
         ],
         totalPower: 0,
       },
