@@ -7,13 +7,20 @@ log() {
 
 # Read long-lived token from add-on config
 HASS_TOKEN=""
+TIBBER_TOKEN=""
 if [ -n "${SUPERVISOR_TOKEN:-}" ]; then
-    ADDON_TOKEN=$(curl -s -H "Authorization: Bearer ${SUPERVISOR_TOKEN}" \
-        http://supervisor/addons/self/info | jq -r '.data.options.hass_token // empty' 2>/dev/null || true)
+    ADDON_INFO=$(curl -s -H "Authorization: Bearer ${SUPERVISOR_TOKEN}" \
+        http://supervisor/addons/self/info 2>/dev/null || true)
+    ADDON_TOKEN=$(echo "$ADDON_INFO" | jq -r '.data.options.hass_token // empty' 2>/dev/null || true)
     if [ -n "$ADDON_TOKEN" ]; then
         HASS_TOKEN="$ADDON_TOKEN"
     fi
+    TIBBER_OPT=$(echo "$ADDON_INFO" | jq -r '.data.options.tibber_token // empty' 2>/dev/null || true)
+    if [ -n "$TIBBER_OPT" ]; then
+        TIBBER_TOKEN="$TIBBER_OPT"
+    fi
 fi
+export TIBBER_TOKEN
 
 # Get HA external URL from Core API (this is what the browser can reach)
 HASS_URL=""
@@ -46,6 +53,7 @@ fi
 log "Starting Dashboard..."
 log "HA URL for browser: ${HASS_URL}"
 log "Token configured: $([ -n "$HASS_TOKEN" ] && echo 'yes' || echo 'NO - configure hass_token in add-on settings!')"
+log "Tibber token: $([ -n "$TIBBER_TOKEN" ] && echo 'yes' || echo 'no (Auswertung wird auf HA Recorder zurückfallen)')"
 
 # Write runtime config for the client (replaces fragile sed-based placeholder system)
 mkdir -p /app/public

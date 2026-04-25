@@ -10,7 +10,8 @@ import { TopConsumersCard } from "@/components/auswertung/TopConsumersCard";
 import { RoomHistoryCard } from "@/components/auswertung/RoomHistoryCard";
 import { HeatmapCard } from "@/components/auswertung/HeatmapCard";
 import { StandbyCard } from "@/components/auswertung/StandbyCard";
-import { useHistoryData, type TimePeriod } from "@/lib/hooks/useHistoryData";
+import { type TimePeriod } from "@/lib/hooks/useHistoryData";
+import { useTibberHistory } from "@/lib/hooks/useTibberHistory";
 import { useDeviceEnergyHistory } from "@/lib/hooks/useDeviceEnergyHistory";
 import { useStandbyAnalysis } from "@/lib/hooks/useStandbyAnalysis";
 
@@ -23,7 +24,7 @@ const PERIOD_LABELS: Record<TimePeriod, string> = {
 
 export function AuswertungPage() {
   const [period, setPeriod] = useState<TimePeriod>("today");
-  const data = useHistoryData(period);
+  const data = useTibberHistory(period);
   const deviceData = useDeviceEnergyHistory(period);
   const standby = useStandbyAnalysis(period);
 
