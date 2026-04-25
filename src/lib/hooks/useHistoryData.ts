@@ -32,9 +32,11 @@ export interface HistoryData {
   recordedDays: number;
 }
 
+type StatPeriod = "hour" | "day" | "month";
+
 // ── Period helpers ──────────────────────────────────────────
 
-export function getPeriodRange(period: TimePeriod): { start: Date; end: Date; statPeriod: "day" | "month"; days: number } {
+export function getPeriodRange(period: TimePeriod): { start: Date; end: Date; statPeriod: StatPeriod; days: number } {
   const now = new Date();
   const end = now;
 
@@ -43,13 +45,13 @@ export function getPeriodRange(period: TimePeriod): { start: Date; end: Date; st
       const start = new Date(now);
       start.setDate(start.getDate() - 7);
       start.setHours(0, 0, 0, 0);
-      return { start, end, statPeriod: "day", days: 7 };
+      return { start, end, statPeriod: "hour", days: 7 };
     }
     case "30d": {
       const start = new Date(now);
       start.setDate(start.getDate() - 30);
       start.setHours(0, 0, 0, 0);
-      return { start, end, statPeriod: "day", days: 30 };
+      return { start, end, statPeriod: "hour", days: 30 };
     }
     case "12m": {
       const start = new Date(now);
@@ -77,48 +79,87 @@ function getPrevPeriodRange(period: TimePeriod, start: Date): { prevStart: Date;
   return { prevStart, prevEnd };
 }
 
-function formatDayLabel(dateStr: string): string {
-  const d = new Date(dateStr + "T00:00:00");
+function formatDayLabel(d: Date): string {
   return d.toLocaleDateString("de-DE", { day: "numeric", month: "short" });
 }
 
-function formatMonthLabel(monthKey: string): string {
-  const d = new Date(monthKey + "-01T00:00:00");
+function formatMonthLabel(d: Date): string {
   return d.toLocaleDateString("de-DE", { month: "short", year: "2-digit" });
 }
 
 // ── Timestamp helpers ──────────────────────────────────────
 
-/** HA Statistics API returns `start` as a Unix timestamp (seconds) — convert to ISO string */
-function startToIso(start: string | number): string {
-  if (typeof start === "string") return start;
-  return new Date(start * 1000).toISOString();
+/** HA Statistics API returns `start` as either a Unix timestamp (seconds) or ISO string */
+function startToDate(start: string | number): Date {
+  if (typeof start === "string") return new Date(start);
+  return new Date(start * 1000);
 }
 
-// ── Extract values from statistics entries ─────────────────
+/** Local YYYY-MM-DD key (does not shift days across timezones like .toISOString().slice(0,10) does) */
+function localDateKey(d: Date): string {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
 
-/** Get the delta value for each entry — prefer `change`, fall back to computing deltas from `sum` */
-function extractDeltas(entries: StatisticsEntry[]): number[] {
-  if (entries.length > 0 && entries[0].change !== undefined) {
-    return entries.map((e) => Math.max(0, e.change ?? 0));
-  }
-  if (entries.length > 0 && entries[0].sum !== undefined) {
-    return entries.map((e, i) => {
-      if (i === 0) return e.sum ?? 0;
-      const prev = entries[i - 1].sum ?? 0;
-      const curr = e.sum ?? 0;
-      return Math.max(0, curr - prev);
-    });
-  }
-  return entries.map((e) => Math.max(0, e.state ?? e.mean ?? 0));
+/** Local YYYY-MM key for monthly buckets */
+function localMonthKey(d: Date): string {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  return `${y}-${m}`;
+}
+
+// ── Aggregation ────────────────────────────────────────────
+
+interface DailyBucket {
+  key: string;
+  date: Date;
+  delta: number;
 }
 
 /**
- * For periodic-reset counters (e.g. daily/monthly cost): the bucket-end `state`
- * is the period total just before reset. Prefer `state`, fall back to `max`.
+ * Aggregate hourly statistics entries to daily totals using `Σ max(0, change)`.
+ * Negative `change` values (from resets of daily-reset counters like
+ * `kumulierte_kosten`) are clamped to zero, so the same logic works for both
+ * lifetime counters and reset counters.
  */
-function extractStateValues(entries: StatisticsEntry[]): number[] {
-  return entries.map((e) => Math.max(0, e.state ?? e.max ?? e.mean ?? 0));
+function aggregateToDailyDeltas(entries: StatisticsEntry[]): DailyBucket[] {
+  const buckets = new Map<string, DailyBucket>();
+  for (const e of entries) {
+    const d = startToDate(e.start);
+    const key = localDateKey(d);
+    const change = Math.max(0, e.change ?? 0);
+    const existing = buckets.get(key);
+    if (existing) {
+      existing.delta += change;
+    } else {
+      buckets.set(key, {
+        key,
+        date: new Date(d.getFullYear(), d.getMonth(), d.getDate()),
+        delta: change,
+      });
+    }
+  }
+  return Array.from(buckets.values()).sort((a, b) => a.date.getTime() - b.date.getTime());
+}
+
+interface MonthlyBucket {
+  key: string;
+  date: Date;
+  delta: number;
+}
+
+/** Map monthly statistics entries 1:1 to monthly buckets, clamping negative `change` to 0. */
+function mapMonthlyDeltas(entries: StatisticsEntry[]): MonthlyBucket[] {
+  return entries.map((e) => {
+    const d = startToDate(e.start);
+    return {
+      key: localMonthKey(d),
+      date: new Date(d.getFullYear(), d.getMonth(), 1),
+      delta: Math.max(0, e.change ?? 0),
+    };
+  });
 }
 
 function getEntries(result: Record<string, StatisticsEntry[]>, preferredKey: string): StatisticsEntry[] {
@@ -171,8 +212,9 @@ export function useHistoryData(period: TimePeriod): HistoryData {
       const { start, end, statPeriod } = getPeriodRange(period);
       const { prevStart, prevEnd } = getPrevPeriodRange(period, start);
 
-      // Cost source depends on period: daily-reset counter for short ranges,
-      // monthly-reset counter for long ranges. Both are read via bucket-end `state`.
+      // For 7d/30d (statPeriod=hour) cost comes from the daily-reset counter,
+      // its negative reset spikes get clamped during aggregation.
+      // For 12m/year (statPeriod=month) the monthly-reset counter is the right source.
       const costStatId = statPeriod === "month" ? ids.monthlyCost : ids.dailyCost;
 
       const [consumptionStats, costStats, prevConsumptionStats, prevCostStats] = await Promise.all([
@@ -183,43 +225,43 @@ export function useHistoryData(period: TimePeriod): HistoryData {
       ]);
 
       const consumptionEntries = getEntries(consumptionStats, ids.meter);
-      const consumptionDeltas = extractDeltas(consumptionEntries);
-      const consumption: ChartPoint[] = consumptionEntries.map((e, i) => {
-        const iso = startToIso(e.start);
-        const dateStr = iso.slice(0, 10);
-        return {
-          date: dateStr,
-          label: statPeriod === "month" ? formatMonthLabel(iso.slice(0, 7)) : formatDayLabel(dateStr),
-          value: consumptionDeltas[i],
-        };
-      });
-
       const costEntries = getEntries(costStats, costStatId);
-      const costValues = extractStateValues(costEntries);
-      const cost: ChartPoint[] = costEntries.map((e, i) => {
-        const iso = startToIso(e.start);
-        const dateStr = iso.slice(0, 10);
-        return {
-          date: dateStr,
-          label: statPeriod === "month" ? formatMonthLabel(iso.slice(0, 7)) : formatDayLabel(dateStr),
-          value: costValues[i],
-        };
-      });
-
-      const totalConsumption = consumptionDeltas.reduce((sum, v) => sum + v, 0);
-      const totalCost = costValues.reduce((sum, v) => sum + v, 0);
-      const numDays = consumptionEntries.length || 1;
-
       const prevConsumptionEntries = getEntries(prevConsumptionStats, ids.meter);
       const prevCostEntries = getEntries(prevCostStats, costStatId);
-      const prevConsumptionDeltas = extractDeltas(prevConsumptionEntries);
-      const prevCostValues = extractStateValues(prevCostEntries);
-      const prevTotalConsumption = prevConsumptionEntries.length > 0
-        ? prevConsumptionDeltas.reduce((sum, v) => sum + v, 0)
-        : null;
-      const prevTotalCost = prevCostEntries.length > 0
-        ? prevCostValues.reduce((sum, v) => sum + v, 0)
-        : null;
+
+      let consumption: ChartPoint[];
+      let cost: ChartPoint[];
+      let totalConsumption: number;
+      let totalCost: number;
+      let numBuckets: number;
+      let prevTotalConsumption: number | null;
+      let prevTotalCost: number | null;
+
+      if (statPeriod === "month") {
+        const consumptionBuckets = mapMonthlyDeltas(consumptionEntries);
+        const costBuckets = mapMonthlyDeltas(costEntries);
+        consumption = consumptionBuckets.map((b) => ({ date: b.key, label: formatMonthLabel(b.date), value: b.delta }));
+        cost = costBuckets.map((b) => ({ date: b.key, label: formatMonthLabel(b.date), value: b.delta }));
+        totalConsumption = consumptionBuckets.reduce((s, b) => s + b.delta, 0);
+        totalCost = costBuckets.reduce((s, b) => s + b.delta, 0);
+        numBuckets = consumptionBuckets.length || 1;
+        const prevC = mapMonthlyDeltas(prevConsumptionEntries);
+        const prevK = mapMonthlyDeltas(prevCostEntries);
+        prevTotalConsumption = prevC.length > 0 ? prevC.reduce((s, b) => s + b.delta, 0) : null;
+        prevTotalCost = prevK.length > 0 ? prevK.reduce((s, b) => s + b.delta, 0) : null;
+      } else {
+        const consumptionBuckets = aggregateToDailyDeltas(consumptionEntries);
+        const costBuckets = aggregateToDailyDeltas(costEntries);
+        consumption = consumptionBuckets.map((b) => ({ date: b.key, label: formatDayLabel(b.date), value: b.delta }));
+        cost = costBuckets.map((b) => ({ date: b.key, label: formatDayLabel(b.date), value: b.delta }));
+        totalConsumption = consumptionBuckets.reduce((s, b) => s + b.delta, 0);
+        totalCost = costBuckets.reduce((s, b) => s + b.delta, 0);
+        numBuckets = consumptionBuckets.length || 1;
+        const prevC = aggregateToDailyDeltas(prevConsumptionEntries);
+        const prevK = aggregateToDailyDeltas(prevCostEntries);
+        prevTotalConsumption = prevC.length > 0 ? prevC.reduce((s, b) => s + b.delta, 0) : null;
+        prevTotalCost = prevK.length > 0 ? prevK.reduce((s, b) => s + b.delta, 0) : null;
+      }
 
       setData({
         consumption,
@@ -227,14 +269,14 @@ export function useHistoryData(period: TimePeriod): HistoryData {
         kpis: {
           totalConsumption,
           totalCost,
-          avgDailyConsumption: totalConsumption / numDays,
-          avgDailyCost: totalCost / numDays,
+          avgDailyConsumption: totalConsumption / numBuckets,
+          avgDailyCost: totalCost / numBuckets,
           prevTotalConsumption,
           prevTotalCost,
         },
         loading: false,
         error: null,
-        recordedDays: consumptionEntries.length,
+        recordedDays: consumption.length,
       });
     } catch (err) {
       console.error("[Auswertung] Error loading history:", err);
