@@ -49,8 +49,11 @@ export function TopConsumersCard({ data, topN = 8 }: TopConsumersCardProps) {
                       <span className="truncate text-foreground/90">{d.label}</span>
                       <span className="truncate text-muted-foreground/60">· {d.roomLabel}</span>
                     </div>
-                    <span className="tabular-nums text-foreground/80 ml-2 shrink-0">
-                      {formatKWh(d.kWh)}
+                    <span
+                      className="tabular-nums text-foreground/80 ml-2 shrink-0"
+                      title={d.source === "power" ? "Geschätzt aus Leistungsverlauf" : "Aus Energie-Zähler"}
+                    >
+                      {d.source === "power" ? "~" : ""}{formatKWh(d.kWh)}
                     </span>
                   </div>
                   <div className="h-1.5 rounded-full bg-white/[0.04] overflow-hidden">
