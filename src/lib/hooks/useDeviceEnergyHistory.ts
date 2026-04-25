@@ -1,8 +1,11 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
-import { ROOMS } from "@/lib/hass/rooms";
-import { getDailyRange, getEarliestDate, onEnergyUpdate } from "@/lib/storage/energyStore";
+import { useEffect, useState, useCallback, useRef } from "react";
+import { useHass } from "./useHass";
+import { fetchStatistics } from "@/lib/hass/history";
+import { getAllStatisticIds } from "@/lib/hass/resolveStatisticIds";
+import { fetchEnergyPrefs } from "@/lib/hass/energyPrefs";
+import { ROOMS, deriveEnergyCandidates } from "@/lib/hass/rooms";
 import { getPeriodRange, type TimePeriod } from "./useHistoryData";
 
 export interface DeviceEnergy {
@@ -12,8 +15,8 @@ export interface DeviceEnergy {
   roomLabel: string;
   roomColor: string;
   kWh: number;
-  /** Always "recorded" with the new persistent recorder. Kept for compatibility with the UI. */
-  source: "recorded";
+  /** "prefs" = configured under HA Energy "Individual devices"; "counter" = auto-discovered kWh sibling */
+  source: "prefs" | "counter";
 }
 
 export interface RoomEnergy {
@@ -29,60 +32,149 @@ export interface DeviceEnergyHistory {
   devices: DeviceEnergy[];
   rooms: RoomEnergy[];
   total: number;
-  /** Earliest day with any recorded data (YYYY-MM-DD). null = nothing recorded yet. */
-  recordedSince: string | null;
+  /** Devices in ROOMS that we couldn't resolve to any kWh statistic. */
+  unmappedLabels: string[];
   loading: boolean;
   error: string | null;
+}
+
+interface DeviceResolution {
+  entityId: string;
+  statId: string;
+  source: "prefs" | "counter";
+  unit: string | null;
 }
 
 const empty: DeviceEnergyHistory = {
   devices: [],
   rooms: [],
   total: 0,
-  recordedSince: null,
+  unmappedLabels: [],
   loading: true,
   error: null,
 };
 
-function localDateKey(d: Date): string {
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, "0");
-  const day = String(d.getDate()).padStart(2, "0");
-  return `${y}-${m}-${day}`;
+function toKwh(value: number, unit: string | null): number {
+  if (!unit) return value;
+  const u = unit.toLowerCase();
+  if (u === "kwh") return value;
+  if (u === "wh") return value / 1000;
+  if (u === "mwh") return value * 1000;
+  return value;
 }
 
-const ALL_DEVICE_IDS = ROOMS.flatMap((r) => r.devices.map((d) => d.entityId));
-
 export function useDeviceEnergyHistory(period: TimePeriod): DeviceEnergyHistory {
+  const { connection } = useHass();
   const [data, setData] = useState<DeviceEnergyHistory>(empty);
+  const resolutionRef = useRef<{ resolution: DeviceResolution[]; unmapped: string[] } | null>(null);
 
   const load = useCallback(async () => {
+    if (!connection) return;
+    setData((prev) => ({ ...prev, loading: true, error: null }));
+
     try {
-      const { start, end } = getPeriodRange(period);
-      const startKey = localDateKey(start);
-      const endKey = localDateKey(end);
+      // ── Resolve once per session ─────────────────────────────
+      if (!resolutionRef.current) {
+        const [prefs, allStats] = await Promise.all([
+          fetchEnergyPrefs(connection).catch((e) => {
+            console.warn("[Auswertung] energy/get_prefs failed, will fall back to counter discovery", e);
+            return null;
+          }),
+          getAllStatisticIds(connection),
+        ]);
 
-      const [entries, earliest] = await Promise.all([
-        getDailyRange(ALL_DEVICE_IDS, startKey, endKey),
-        getEarliestDate(ALL_DEVICE_IDS),
-      ]);
+        const prefsStatIds = new Set(prefs?.device_consumption.map((d) => d.stat_consumption) ?? []);
+        const byId = new Map(allStats.map((s) => [s.statistic_id, s]));
 
-      const totalsByDevice = new Map<string, number>();
-      for (const e of entries) {
-        totalsByDevice.set(e.entityId, (totalsByDevice.get(e.entityId) ?? 0) + e.kWh);
+        const resolution: DeviceResolution[] = [];
+        const unmapped: string[] = [];
+
+        for (const room of ROOMS) {
+          for (const dev of room.devices) {
+            const candidates = deriveEnergyCandidates(dev.entityId);
+
+            // 1) Prefer a candidate that's in HA Energy "Individual devices"
+            let statId = candidates.find((c) => prefsStatIds.has(c));
+            let source: "prefs" | "counter" = "prefs";
+
+            // 2) Fallback: any kWh-counter sibling that exists in long-term stats
+            if (!statId) {
+              for (const c of candidates) {
+                const info = byId.get(c);
+                if (
+                  info &&
+                  info.has_sum &&
+                  info.unit_of_measurement &&
+                  ["kwh", "wh", "mwh"].includes(info.unit_of_measurement.toLowerCase())
+                ) {
+                  statId = c;
+                  source = "counter";
+                  break;
+                }
+              }
+            }
+
+            if (statId) {
+              const info = byId.get(statId);
+              resolution.push({
+                entityId: dev.entityId,
+                statId,
+                source,
+                unit: info?.unit_of_measurement ?? "kWh",
+              });
+            } else {
+              unmapped.push(dev.label);
+            }
+          }
+        }
+
+        resolutionRef.current = { resolution, unmapped };
+        console.log(
+          "[Auswertung] Device→energy mapping:",
+          resolution.map((r) => `${r.entityId} → ${r.statId} (${r.source}, ${r.unit ?? "?"})`)
+        );
+        if (unmapped.length > 0) {
+          console.log("[Auswertung] Unmapped devices (no kWh counter found):", unmapped);
+        }
       }
+
+      const { resolution, unmapped } = resolutionRef.current;
+
+      if (resolution.length === 0) {
+        setData({
+          devices: [],
+          rooms: [],
+          total: 0,
+          unmappedLabels: unmapped,
+          loading: false,
+          error: null,
+        });
+        return;
+      }
+
+      // ── Fetch statistics for all resolved IDs ────────────────
+      const { start, end } = getPeriodRange(period);
+      const statPeriod: "hour" | "month" = period === "12m" || period === "year" ? "month" : "hour";
+
+      const ids = resolution.map((r) => r.statId);
+      const stats = await fetchStatistics(connection, ids, start, end, statPeriod);
 
       const devices: DeviceEnergy[] = [];
       for (const room of ROOMS) {
         for (const dev of room.devices) {
+          const res = resolution.find((r) => r.entityId === dev.entityId);
+          if (!res) continue;
+          const entries = stats[res.statId] ?? [];
+          const sum = entries.reduce((s, e) => s + Math.max(0, e.change ?? 0), 0);
+          const kWh = toKwh(sum, res.unit);
           devices.push({
             entityId: dev.entityId,
             label: dev.label,
             roomId: room.id,
             roomLabel: room.label,
             roomColor: room.color,
-            kWh: totalsByDevice.get(dev.entityId) ?? 0,
-            source: "recorded",
+            kWh,
+            source: res.source,
           });
         }
       }
@@ -107,29 +199,22 @@ export function useDeviceEnergyHistory(period: TimePeriod): DeviceEnergyHistory 
         devices: devices.sort((a, b) => b.kWh - a.kWh),
         rooms,
         total,
-        recordedSince: earliest,
+        unmappedLabels: unmapped,
         loading: false,
         error: null,
       });
     } catch (err) {
-      console.error("[Auswertung] device energy load error:", err);
+      console.error("[Auswertung] device energy error:", err);
       setData((prev) => ({
         ...prev,
         loading: false,
         error: err instanceof Error ? err.message : "Fehler beim Laden",
       }));
     }
-  }, [period]);
+  }, [connection, period]);
 
   useEffect(() => {
     load();
-  }, [load]);
-
-  // Re-load when the recorder writes new samples
-  useEffect(() => {
-    return onEnergyUpdate(() => {
-      load();
-    });
   }, [load]);
 
   return data;

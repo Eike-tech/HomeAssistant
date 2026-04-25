@@ -42,14 +42,9 @@ export function AuswertungPage() {
         <CostChart data={data.cost} loading={data.loading} />
       </div>
 
-      {deviceData.recordedSince && (
+      {deviceData.unmappedLabels.length > 0 && (
         <div className="text-[10px] text-muted-foreground/70 -mb-3 px-1">
-          Geräte-Aufzeichnung seit{" "}
-          {new Date(deviceData.recordedSince + "T00:00:00").toLocaleDateString("de-DE", {
-            day: "numeric",
-            month: "long",
-            year: "numeric",
-          })}
+          Ohne kWh-Zähler (in HA Energie nicht hinterlegt): {deviceData.unmappedLabels.join(", ")}
         </div>
       )}
 
