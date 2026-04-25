@@ -78,10 +78,12 @@ export function useTibberHistory(period: TimePeriod): HistoryData {
 
     try {
       // Resolve API path relative to current page so the HA Ingress prefix is preserved
-      // (matches the pattern used in `src/lib/hass/connection.ts` for config.json).
+      // (must match `src/lib/hass/connection.ts` exactly — the trailing slash is significant:
+      // pathname `/api/hassio_ingress/<token>/` strips to `/api/hassio_ingress/<token>`,
+      // which is what we need. Don't pre-strip the trailing slash!).
       const base =
         typeof window !== "undefined"
-          ? window.location.pathname.replace(/\/$/, "").replace(/\/[^/]*$/, "")
+          ? window.location.pathname.replace(/\/[^/]*$/, "")
           : "";
       const url = `${base}/api/tibber/consumption?period=${period}`;
       console.log(`[Tibber] fetching ${url}`);
