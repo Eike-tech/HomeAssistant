@@ -3,7 +3,8 @@
 import { useEffect, useState, useCallback, useRef } from "react";
 import { useHass } from "./useHass";
 import { fetchStatistics, type StatisticsEntry } from "@/lib/hass/history";
-import { resolveStatisticIds, type StatisticIdMap } from "@/lib/hass/resolveStatisticIds";
+import { resolveStatisticIds } from "@/lib/hass/resolveStatisticIds";
+import { fetchEnergyPrefs, getGridStatIds } from "@/lib/hass/energyPrefs";
 import { ENTITIES } from "@/lib/hass/entities";
 
 export type TimePeriod = "today" | "7d" | "30d" | "year";
@@ -172,6 +173,23 @@ function aggregateHourlyToDaily(hourly: Bucket[]): Bucket[] {
   return Array.from(buckets.values()).sort((a, b) => a.date.getTime() - b.date.getTime());
 }
 
+/**
+ * Map cost statistics entries to chart buckets, handling the case where the
+ * cost was fetched at a different resolution than the chart needs.
+ */
+function mapCostBuckets(
+  entries: StatisticsEntry[],
+  chartResolution: ChartResolution,
+  fetchResolution: "hour" | "day"
+): Bucket[] {
+  if (fetchResolution === "hour") {
+    const hourly = mapHourlyEntries(entries);
+    return chartResolution === "hour" ? hourly : aggregateHourlyToDaily(hourly);
+  }
+  // fetchResolution === "day"
+  return mapDailyEntries(entries);
+}
+
 function getEntries(result: Record<string, StatisticsEntry[]>, preferredKey: string): StatisticsEntry[] {
   if (result[preferredKey]?.length) return result[preferredKey];
   for (const entries of Object.values(result)) {
@@ -203,7 +221,12 @@ export function useHistoryData(period: TimePeriod): HistoryData {
     recordedDays: 0,
   });
 
-  const resolvedIdsRef = useRef<StatisticIdMap | null>(null);
+  const resolvedIdsRef = useRef<{
+    consumption: string;
+    cost: string;
+    /** true = lifetime counter (HA Energy stat_cost). false = daily-reset fallback. */
+    costIsLifetime: boolean;
+  } | null>(null);
 
   const load = useCallback(async () => {
     if (!connection) return;
@@ -212,43 +235,63 @@ export function useHistoryData(period: TimePeriod): HistoryData {
 
     try {
       if (!resolvedIdsRef.current) {
-        resolvedIdsRef.current = await resolveStatisticIds(connection, {
+        // Pull the same stat IDs that HA's Energy dashboard uses (so values
+        // match exactly what the user sees in HA's own "Heute" tile).
+        const prefs = await fetchEnergyPrefs(connection).catch((e) => {
+          console.warn("[Auswertung] energy/get_prefs failed, falling back to ENTITIES", e);
+          return null;
+        });
+        const grid = prefs ? getGridStatIds(prefs) : { consumption: null, cost: null };
+
+        const fallback = await resolveStatisticIds(connection, {
           meter: ENTITIES.energy.meterReading,
           dailyCost: ENTITIES.energy.dailyCost,
         });
+
+        resolvedIdsRef.current = {
+          consumption: grid.consumption ?? fallback.meter,
+          cost: grid.cost ?? fallback.dailyCost,
+          costIsLifetime: grid.cost !== null,
+        };
+
+        console.log(
+          "[Auswertung] history stat IDs",
+          resolvedIdsRef.current,
+          "(grid prefs:",
+          grid,
+          ")"
+        );
       }
 
       const ids = resolvedIdsRef.current;
       const { start, end, resolution, days } = getPeriodRange(period);
       const { prevStart, prevEnd } = getPrevPeriodRange(period, start, end);
 
-      // Meter (lifetime counter): fetch at chart resolution directly
-      // Cost (daily-reset counter): always fetch hourly to clamp midnight resets
-      // — aggregate to days in JS when chart resolution === "day"
+      // Meter is a lifetime counter — fetch at chart resolution directly.
+      // Cost: when from HA Energy prefs (`stat_cost`) it's also a lifetime
+      // counter and works at any resolution. When falling back to the
+      // daily-reset `kumulierte_kosten`, fetch hourly and aggregate locally
+      // so midnight resets get clamped instead of producing negative buckets.
+      const costFetchResolution: "hour" | "day" = ids.costIsLifetime ? resolution : "hour";
+
       const [consumptionStats, costStats, prevConsumptionStats, prevCostStats] = await Promise.all([
-        fetchStatistics(connection, [ids.meter], start, end, resolution),
-        fetchStatistics(connection, [ids.dailyCost], start, end, "hour"),
-        fetchStatistics(connection, [ids.meter], prevStart, prevEnd, resolution),
-        fetchStatistics(connection, [ids.dailyCost], prevStart, prevEnd, "hour"),
+        fetchStatistics(connection, [ids.consumption], start, end, resolution),
+        fetchStatistics(connection, [ids.cost], start, end, costFetchResolution),
+        fetchStatistics(connection, [ids.consumption], prevStart, prevEnd, resolution),
+        fetchStatistics(connection, [ids.cost], prevStart, prevEnd, costFetchResolution),
       ]);
 
-      const consumptionEntries = getEntries(consumptionStats, ids.meter);
-      const costEntries = getEntries(costStats, ids.dailyCost);
-      const prevConsumptionEntries = getEntries(prevConsumptionStats, ids.meter);
-      const prevCostEntries = getEntries(prevCostStats, ids.dailyCost);
+      const consumptionEntries = getEntries(consumptionStats, ids.consumption);
+      const costEntries = getEntries(costStats, ids.cost);
+      const prevConsumptionEntries = getEntries(prevConsumptionStats, ids.consumption);
+      const prevCostEntries = getEntries(prevCostStats, ids.cost);
 
       const consumptionBuckets =
         resolution === "hour" ? mapHourlyEntries(consumptionEntries) : mapDailyEntries(consumptionEntries);
-      const costBuckets =
-        resolution === "hour"
-          ? mapHourlyEntries(costEntries)
-          : aggregateHourlyToDaily(mapHourlyEntries(costEntries));
+      const costBuckets = mapCostBuckets(costEntries, resolution, costFetchResolution);
       const prevConsumptionBuckets =
         resolution === "hour" ? mapHourlyEntries(prevConsumptionEntries) : mapDailyEntries(prevConsumptionEntries);
-      const prevCostBuckets =
-        resolution === "hour"
-          ? mapHourlyEntries(prevCostEntries)
-          : aggregateHourlyToDaily(mapHourlyEntries(prevCostEntries));
+      const prevCostBuckets = mapCostBuckets(prevCostEntries, resolution, costFetchResolution);
 
       const labelFor = (d: Date) => (resolution === "hour" ? formatHourLabel(d, period) : formatDayLabel(d));
 
