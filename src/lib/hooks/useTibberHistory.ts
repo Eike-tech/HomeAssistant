@@ -83,12 +83,13 @@ export function useTibberHistory(period: TimePeriod): HistoryData {
         typeof window !== "undefined"
           ? window.location.pathname.replace(/\/$/, "").replace(/\/[^/]*$/, "")
           : "";
-      const res = await fetch(`${base}/api/tibber/consumption?period=${period}`, {
-        cache: "no-store",
-      });
+      const url = `${base}/api/tibber/consumption?period=${period}`;
+      console.log(`[Tibber] fetching ${url}`);
+      const res = await fetch(url, { cache: "no-store" });
       if (!res.ok) {
         const errBody = await res.json().catch(() => ({ error: res.statusText }));
-        throw new Error(errBody.error ?? `HTTP ${res.status}`);
+        const tokenInfo = errBody.tokenSet === false ? " (Server: TIBBER_TOKEN env nicht gesetzt)" : "";
+        throw new Error(`HTTP ${res.status} – ${errBody.error ?? res.statusText}${tokenInfo}`);
       }
       const json = (await res.json()) as TibberApiResponse;
       const nodes = json.nodes ?? [];

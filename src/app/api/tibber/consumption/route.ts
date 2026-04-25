@@ -28,14 +28,20 @@ export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
   const period = searchParams.get("period") ?? "today";
   const { resolution, last } = mapPeriod(period);
+  const tokenSet = !!process.env.TIBBER_TOKEN;
+
+  console.log(
+    `[api/tibber] request period=${period} resolution=${resolution} last=${last} tokenSet=${tokenSet}`
+  );
 
   try {
     const nodes = await fetchTibberConsumption(resolution, last);
+    console.log(`[api/tibber] success period=${period} nodes=${nodes.length}`);
     return NextResponse.json({ resolution, period, nodes });
   } catch (e) {
     const message = e instanceof Error ? e.message : String(e);
     const status = message.includes("not configured") ? 503 : 502;
-    console.error("[api/tibber] error:", message);
-    return NextResponse.json({ error: message }, { status });
+    console.error(`[api/tibber] error period=${period} status=${status}: ${message}`);
+    return NextResponse.json({ error: message, tokenSet }, { status });
   }
 }
