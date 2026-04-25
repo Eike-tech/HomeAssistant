@@ -1,10 +1,8 @@
 "use client";
 
-import { useEffect, useState, useCallback, useRef } from "react";
-import { useHass } from "./useHass";
-import { fetchStatistics, type StatisticsEntry } from "@/lib/hass/history";
-import { getAllStatisticIds } from "@/lib/hass/resolveStatisticIds";
-import { ROOMS, deriveEnergyCandidates } from "@/lib/hass/rooms";
+import { useEffect, useState, useCallback } from "react";
+import { ROOMS } from "@/lib/hass/rooms";
+import { getDailyRange, getEarliestDate, onEnergyUpdate } from "@/lib/storage/energyStore";
 import { getPeriodRange, type TimePeriod } from "./useHistoryData";
 
 export interface DeviceEnergy {
@@ -14,8 +12,8 @@ export interface DeviceEnergy {
   roomLabel: string;
   roomColor: string;
   kWh: number;
-  /** "energy" if a kWh counter sibling was found, "power" if integrating power. */
-  source: "energy" | "power";
+  /** Always "recorded" with the new persistent recorder. Kept for compatibility with the UI. */
+  source: "recorded";
 }
 
 export interface RoomEnergy {
@@ -31,135 +29,60 @@ export interface DeviceEnergyHistory {
   devices: DeviceEnergy[];
   rooms: RoomEnergy[];
   total: number;
+  /** Earliest day with any recorded data (YYYY-MM-DD). null = nothing recorded yet. */
+  recordedSince: string | null;
   loading: boolean;
   error: string | null;
-}
-
-interface DeviceResolution {
-  entityId: string;
-  statId: string;
-  mode: "energy" | "power";
-  unit: string | null;
 }
 
 const empty: DeviceEnergyHistory = {
   devices: [],
   rooms: [],
   total: 0,
+  recordedSince: null,
   loading: true,
   error: null,
 };
 
-function startToMs(start: string | number): number {
-  if (typeof start === "string") return new Date(start).getTime();
-  return start * 1000;
+function localDateKey(d: Date): string {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
 }
 
-/** Sum of clamped `change` values across the period. Works for both lifetime and reset counters. */
-function sumChange(entries: StatisticsEntry[]): number {
-  return entries.reduce((sum, e) => sum + Math.max(0, e.change ?? 0), 0);
-}
-
-/** Integrate `mean × interval-hours` to kWh. Used as fallback when no energy sibling exists. */
-function integratePower(entries: StatisticsEntry[]): number {
-  let kWh = 0;
-  for (const e of entries) {
-    const startMs = startToMs(e.start);
-    const endMs = e.end !== undefined ? startToMs(e.end) : startMs + 3600 * 1000;
-    const hours = Math.max(0, (endMs - startMs) / 3_600_000);
-    kWh += ((e.mean ?? 0) * hours) / 1000;
-  }
-  return kWh;
-}
-
-/** Convert raw counter delta to kWh based on the sensor unit. */
-function toKwh(value: number, unit: string | null): number {
-  if (!unit) return value;
-  const u = unit.toLowerCase();
-  if (u === "kwh") return value;
-  if (u === "wh") return value / 1000;
-  if (u === "mwh") return value * 1000;
-  return value;
-}
+const ALL_DEVICE_IDS = ROOMS.flatMap((r) => r.devices.map((d) => d.entityId));
 
 export function useDeviceEnergyHistory(period: TimePeriod): DeviceEnergyHistory {
-  const { connection } = useHass();
   const [data, setData] = useState<DeviceEnergyHistory>(empty);
-  const resolutionRef = useRef<DeviceResolution[] | null>(null);
 
   const load = useCallback(async () => {
-    if (!connection) return;
-    setData((prev) => ({ ...prev, loading: true, error: null }));
-
     try {
-      // ── Resolve once per session: prefer energy counter siblings, fall back to power
-      if (!resolutionRef.current) {
-        const allStats = await getAllStatisticIds(connection);
-        const byId = new Map(allStats.map((s) => [s.statistic_id, s]));
-
-        const resolution: DeviceResolution[] = [];
-        for (const room of ROOMS) {
-          for (const dev of room.devices) {
-            const candidates = deriveEnergyCandidates(dev.entityId);
-            const energyMatch = candidates
-              .map((c) => byId.get(c))
-              .find(
-                (info) =>
-                  info !== undefined &&
-                  info.has_sum &&
-                  info.unit_of_measurement !== null &&
-                  ["kwh", "wh", "mwh"].includes(info.unit_of_measurement.toLowerCase())
-              );
-
-            if (energyMatch) {
-              resolution.push({
-                entityId: dev.entityId,
-                statId: energyMatch.statistic_id,
-                mode: "energy",
-                unit: energyMatch.unit_of_measurement,
-              });
-            } else {
-              const fallback = byId.get(dev.entityId);
-              resolution.push({
-                entityId: dev.entityId,
-                statId: dev.entityId,
-                mode: "power",
-                unit: fallback?.unit_of_measurement ?? null,
-              });
-            }
-          }
-        }
-
-        resolutionRef.current = resolution;
-        console.log(
-          "[Auswertung] Device energy resolution:",
-          resolution.map((r) => `${r.entityId} → ${r.statId} (${r.mode}, ${r.unit ?? "?"})`)
-        );
-      }
-
-      const resolution = resolutionRef.current;
       const { start, end } = getPeriodRange(period);
-      const statPeriod = period === "12m" || period === "year" ? "month" : "hour";
+      const startKey = localDateKey(start);
+      const endKey = localDateKey(end);
 
-      const requestedIds = resolution.map((r) => r.statId);
-      const stats = await fetchStatistics(connection, requestedIds, start, end, statPeriod);
+      const [entries, earliest] = await Promise.all([
+        getDailyRange(ALL_DEVICE_IDS, startKey, endKey),
+        getEarliestDate(ALL_DEVICE_IDS),
+      ]);
+
+      const totalsByDevice = new Map<string, number>();
+      for (const e of entries) {
+        totalsByDevice.set(e.entityId, (totalsByDevice.get(e.entityId) ?? 0) + e.kWh);
+      }
 
       const devices: DeviceEnergy[] = [];
       for (const room of ROOMS) {
         for (const dev of room.devices) {
-          const res = resolution.find((r) => r.entityId === dev.entityId);
-          if (!res) continue;
-          const entries = stats[res.statId] ?? [];
-          const kWh =
-            res.mode === "energy" ? toKwh(sumChange(entries), res.unit) : integratePower(entries);
           devices.push({
             entityId: dev.entityId,
             label: dev.label,
             roomId: room.id,
             roomLabel: room.label,
             roomColor: room.color,
-            kWh,
-            source: res.mode,
+            kWh: totalsByDevice.get(dev.entityId) ?? 0,
+            source: "recorded",
           });
         }
       }
@@ -184,21 +107,29 @@ export function useDeviceEnergyHistory(period: TimePeriod): DeviceEnergyHistory 
         devices: devices.sort((a, b) => b.kWh - a.kWh),
         rooms,
         total,
+        recordedSince: earliest,
         loading: false,
         error: null,
       });
     } catch (err) {
-      console.error("[Auswertung] device energy error:", err);
+      console.error("[Auswertung] device energy load error:", err);
       setData((prev) => ({
         ...prev,
         loading: false,
         error: err instanceof Error ? err.message : "Fehler beim Laden",
       }));
     }
-  }, [connection, period]);
+  }, [period]);
 
   useEffect(() => {
     load();
+  }, [load]);
+
+  // Re-load when the recorder writes new samples
+  useEffect(() => {
+    return onEnergyUpdate(() => {
+      load();
+    });
   }, [load]);
 
   return data;
