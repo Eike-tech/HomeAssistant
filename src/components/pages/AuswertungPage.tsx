@@ -38,6 +38,18 @@ export function AuswertungPage() {
         <PeriodSelector value={period} onChange={setPeriod} />
       </div>
 
+      {data.error && (
+        <div className="rounded-xl border border-rose-500/30 bg-rose-500/[0.06] px-4 py-3 text-xs text-rose-200">
+          <span className="font-medium">Tibber-Daten nicht ladbar:</span>{" "}
+          <span className="text-rose-300/80">{data.error}</span>
+          <div className="mt-1 text-[10px] text-rose-300/60">
+            Prüfe in HA → Add-on → Konfiguration, ob{" "}
+            <code className="text-rose-200/90">tibber_token</code> gesetzt ist und das Add-on neu
+            gestartet wurde.
+          </div>
+        </div>
+      )}
+
       <KpiRow kpis={data.kpis} loading={data.loading} />
 
       <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">

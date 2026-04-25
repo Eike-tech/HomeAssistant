@@ -86,6 +86,14 @@ export function useTibberHistory(period: TimePeriod): HistoryData {
       const nodes = json.nodes ?? [];
 
       const { start, end, resolution, days } = getPeriodRange(period);
+      console.log(
+        `[Tibber] period=${period} resolution=${json.resolution} ` +
+          `nodes=${nodes.length} ` +
+          `range=[${start.toISOString()} → ${end.toISOString()}]` +
+          (nodes.length > 0
+            ? ` first=${nodes[0].from} last=${nodes[nodes.length - 1].from}`
+            : "")
+      );
       // Previous period bounds — same shift logic as useHistoryData
       const prevBounds = (() => {
         switch (period) {
@@ -117,6 +125,10 @@ export function useTibberHistory(period: TimePeriod): HistoryData {
 
       const currentNodes = nodes.filter((n) => isInRange(n, start, end));
       const prevNodes = nodes.filter((n) => isInRange(n, prevBounds.start, prevBounds.end));
+      console.log(
+        `[Tibber] filtered current=${currentNodes.length} prev=${prevNodes.length} ` +
+          `(prev range=[${prevBounds.start.toISOString()} → ${prevBounds.end.toISOString()}])`
+      );
 
       const labelFor = (d: Date) =>
         resolution === "hour" ? formatHourLabel(d, period) : formatDayLabel(d);
