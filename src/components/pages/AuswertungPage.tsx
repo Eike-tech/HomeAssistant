@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { Database } from "lucide-react";
 import { Header } from "@/components/layout/Header";
 import { PeriodSelector } from "@/components/history/PeriodSelector";
 import { KpiRow } from "@/components/history/KpiRow";
@@ -15,11 +14,20 @@ import { useHistoryData, type TimePeriod } from "@/lib/hooks/useHistoryData";
 import { useDeviceEnergyHistory } from "@/lib/hooks/useDeviceEnergyHistory";
 import { useStandbyAnalysis } from "@/lib/hooks/useStandbyAnalysis";
 
+const PERIOD_LABELS: Record<TimePeriod, string> = {
+  today: "Heute",
+  "7d": "Letzte 7 Tage",
+  "30d": "Letzte 30 Tage",
+  year: "Aktuelles Jahr",
+};
+
 export function AuswertungPage() {
-  const [period, setPeriod] = useState<TimePeriod>("7d");
+  const [period, setPeriod] = useState<TimePeriod>("today");
   const data = useHistoryData(period);
   const deviceData = useDeviceEnergyHistory(period);
   const standby = useStandbyAnalysis(period);
+
+  const periodLabel = PERIOD_LABELS[period];
 
   return (
     <main className="mx-auto max-w-7xl space-y-5 p-5 md:p-8">
@@ -27,12 +35,6 @@ export function AuswertungPage() {
 
       <div className="flex items-center justify-between gap-4">
         <PeriodSelector value={period} onChange={setPeriod} />
-        {data.recordedDays > 0 && (
-          <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
-            <Database className="h-3 w-3" />
-            <span>{data.recordedDays} Tage aufgezeichnet</span>
-          </div>
-        )}
       </div>
 
       <KpiRow kpis={data.kpis} loading={data.loading} />
@@ -49,8 +51,8 @@ export function AuswertungPage() {
       )}
 
       <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
-        <TopConsumersCard data={deviceData} />
-        <RoomHistoryCard data={deviceData} />
+        <TopConsumersCard data={deviceData} periodLabel={periodLabel} />
+        <RoomHistoryCard data={deviceData} periodLabel={periodLabel} />
       </div>
 
       <HeatmapCard />

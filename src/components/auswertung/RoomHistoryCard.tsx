@@ -17,6 +17,7 @@ const roomIcons: Record<string, typeof Monitor> = {
 
 interface RoomHistoryCardProps {
   data: DeviceEnergyHistory;
+  periodLabel: string;
 }
 
 function formatKWh(kWh: number): string {
@@ -25,13 +26,14 @@ function formatKWh(kWh: number): string {
   return `${kWh.toFixed(2)} kWh`;
 }
 
-export function RoomHistoryCard({ data }: RoomHistoryCardProps) {
+export function RoomHistoryCard({ data, periodLabel }: RoomHistoryCardProps) {
   return (
     <Card>
-      <CardHeader>
+      <CardHeader className="space-y-0.5">
         <CardTitle className="text-sm font-medium text-muted-foreground">
           Verbrauch pro Raum
         </CardTitle>
+        <p className="text-[10px] text-muted-foreground/60">{periodLabel}</p>
       </CardHeader>
       <CardContent>
         {data.loading ? (

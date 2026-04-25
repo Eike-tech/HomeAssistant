@@ -5,6 +5,7 @@ import type { DeviceEnergyHistory } from "@/lib/hooks/useDeviceEnergyHistory";
 
 interface TopConsumersCardProps {
   data: DeviceEnergyHistory;
+  periodLabel: string;
   topN?: number;
 }
 
@@ -14,16 +15,17 @@ function formatKWh(kWh: number): string {
   return `${kWh.toFixed(2)} kWh`;
 }
 
-export function TopConsumersCard({ data, topN = 8 }: TopConsumersCardProps) {
+export function TopConsumersCard({ data, periodLabel, topN = 8 }: TopConsumersCardProps) {
   const top = data.devices.filter((d) => d.kWh > 0).slice(0, topN);
   const max = top.length > 0 ? top[0].kWh : 0;
 
   return (
     <Card>
-      <CardHeader>
+      <CardHeader className="space-y-0.5">
         <CardTitle className="text-sm font-medium text-muted-foreground">
           Top-Verbraucher (Geräte)
         </CardTitle>
+        <p className="text-[10px] text-muted-foreground/60">{periodLabel}</p>
       </CardHeader>
       <CardContent>
         {data.loading ? (

@@ -154,7 +154,10 @@ export function useDeviceEnergyHistory(period: TimePeriod): DeviceEnergyHistory 
 
       // ── Fetch statistics for all resolved IDs ────────────────
       const { start, end } = getPeriodRange(period);
-      const statPeriod: "hour" | "month" = period === "12m" || period === "year" ? "month" : "hour";
+      // Coarsest period that still gives correct totals: hour for short ranges,
+      // day for 30d, month for full year (12 entries × N devices is light).
+      const statPeriod: "hour" | "day" | "month" =
+        period === "today" || period === "7d" ? "hour" : period === "30d" ? "day" : "month";
 
       const ids = resolution.map((r) => r.statId);
       const stats = await fetchStatistics(connection, ids, start, end, statPeriod);

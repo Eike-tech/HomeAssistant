@@ -3,9 +3,9 @@
 import type { TimePeriod } from "@/lib/hooks/useHistoryData";
 
 const periods: { id: TimePeriod; label: string }[] = [
+  { id: "today", label: "Heute" },
   { id: "7d", label: "7 Tage" },
   { id: "30d", label: "30 Tage" },
-  { id: "12m", label: "12 Monate" },
   { id: "year", label: "Jahr" },
 ];
 
