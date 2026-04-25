@@ -77,7 +77,15 @@ export function useTibberHistory(period: TimePeriod): HistoryData {
     setData((prev) => ({ ...prev, loading: true, error: null }));
 
     try {
-      const res = await fetch(`/api/tibber/consumption?period=${period}`, { cache: "no-store" });
+      // Resolve API path relative to current page so the HA Ingress prefix is preserved
+      // (matches the pattern used in `src/lib/hass/connection.ts` for config.json).
+      const base =
+        typeof window !== "undefined"
+          ? window.location.pathname.replace(/\/$/, "").replace(/\/[^/]*$/, "")
+          : "";
+      const res = await fetch(`${base}/api/tibber/consumption?period=${period}`, {
+        cache: "no-store",
+      });
       if (!res.ok) {
         const errBody = await res.json().catch(() => ({ error: res.statusText }));
         throw new Error(errBody.error ?? `HTTP ${res.status}`);
