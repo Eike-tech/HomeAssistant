@@ -1,8 +1,9 @@
 "use client";
 
 import { useMemo } from "react";
-import { useEntityNumericState } from "@/lib/hooks/useEntity";
+import { useHass } from "@/lib/hooks/useHass";
 import { ENTITIES } from "@/lib/hass/entities";
+import { ROOMS } from "@/lib/hass/rooms";
 
 export interface DeviceNode {
   id: string;
@@ -26,91 +27,32 @@ export interface EnergyFlow {
   sonstige: number;
 }
 
-function useConsumerPower(entityId: string): number {
-  const val = useEntityNumericState(entityId);
-  return val !== null && !isNaN(val) ? val : 0;
+function parsePower(state: string | undefined): number {
+  if (!state) return 0;
+  const num = parseFloat(state);
+  return isNaN(num) ? 0 : num;
 }
 
 export function useEnergyFlow(): EnergyFlow {
-  const totalKw = useEntityNumericState(ENTITIES.energy.power);
-  const eve1 = useConsumerPower(ENTITIES.energy.eveEnergy1Power);
-  const eve2 = useConsumerPower(ENTITIES.energy.eveEnergy2Power);
-  const shelly = useConsumerPower(ENTITIES.energy.shellyPower);
-  const trockner = useConsumerPower(ENTITIES.energy.trocknerPower);
-  const waschmaschine = useConsumerPower(ENTITIES.energy.waschmaschinePower);
-  const netzwerk = useConsumerPower(ENTITIES.energy.netzwerkPower);
-  const geschirrspuler = useConsumerPower(ENTITIES.energy.geschirrspulerPower);
-  const gefrierschrank = useConsumerPower(ENTITIES.energy.gefrierschrankPower);
-  const homePodBad = useConsumerPower(ENTITIES.energy.homePodBadPower);
-  const homePodSchlaf = useConsumerPower(ENTITIES.energy.homePodSchlafzimmerPower);
-  const sonosBuro = useConsumerPower(ENTITIES.energy.sonosMoveBuroPower);
-  const standleuchte = useConsumerPower(ENTITIES.energy.standleuchtePower);
-  const fotowand = useConsumerPower(ENTITIES.energy.fotowandPower);
-  const tradfriBulb = useConsumerPower(ENTITIES.energy.tradfriBulb2Power);
-  const wohnzimmerSpeaker = useConsumerPower(ENTITIES.energy.wohnzimmerSpeakerPower);
+  const { entities } = useHass();
 
   return useMemo(() => {
-    const totalWatts = totalKw !== null ? totalKw * 1000 : 0;
-    const rawRooms: RoomNode[] = [
-      {
-        id: "wohnzimmer", label: "Wohnzimmer", icon: "sofa", color: "#c084fc",
-        devices: [
-          { id: "entertainment", label: "Entertainment", power: eve2 },
-          { id: "standleuchte", label: "Standleuchte", power: standleuchte },
-          { id: "fotowand", label: "Fotowand", power: fotowand },
-          { id: "tradfri", label: "TRADFRI", power: tradfriBulb },
-        ],
-        totalPower: 0,
-      },
-      {
-        id: "buero", label: "Büro", icon: "monitor", color: "#60a5fa",
-        devices: [
-          { id: "workstation", label: "Workstation", power: eve1 },
-          { id: "sonos-buro", label: "Sonos Move", power: sonosBuro },
-          { id: "netzwerk", label: "Netzwerk", power: netzwerk },
-        ],
-        totalPower: 0,
-      },
-      {
-        id: "bad", label: "Bad", icon: "bath", color: "#38bdf8",
-        devices: [
-          { id: "homepod-bad", label: "HomePod mini", power: homePodBad },
-        ],
-        totalPower: 0,
-      },
-      {
-        id: "schlafzimmer", label: "Schlafzimmer", icon: "bed", color: "#a78bfa",
-        devices: [
-          { id: "homepod-schlaf", label: "HomePod mini", power: homePodSchlaf },
-        ],
-        totalPower: 0,
-      },
-      {
-        id: "garten", label: "Garten", icon: "tree", color: "#34d399",
-        devices: [
-          { id: "shelly", label: "Außensteckdose", power: shelly },
-        ],
-        totalPower: 0,
-      },
-      {
-        id: "hauswirtschaftsraum", label: "Hauswirtschaftsraum", icon: "washing-machine", color: "#38bdf8",
-        devices: [
-          { id: "waschmaschine", label: "Waschmaschine", power: waschmaschine },
-          { id: "trockner", label: "Trockner", power: trockner },
-          { id: "gefrierschrank", label: "Gefrierschrank", power: gefrierschrank },
-        ],
-        totalPower: 0,
-      },
-      {
-        id: "kueche", label: "Küche", icon: "utensils", color: "#fb923c",
-        devices: [
-          { id: "geschirrspueler", label: "Geschirrspüler", power: geschirrspuler },
-        ],
-        totalPower: 0,
-      },
-    ];
+    const totalKw = parsePower(entities[ENTITIES.energy.power]?.state);
+    const totalWatts = totalKw * 1000;
 
-    // All rooms with all devices + room totals (unfiltered), sorted by power
+    const rawRooms: RoomNode[] = ROOMS.map((room) => ({
+      id: room.id,
+      label: room.label,
+      icon: room.icon,
+      color: room.color,
+      devices: room.devices.map((d) => ({
+        id: d.id,
+        label: d.label,
+        power: parsePower(entities[d.entityId]?.state),
+      })),
+      totalPower: 0,
+    }));
+
     const allRooms = rawRooms
       .map((room) => ({
         ...room,
@@ -118,7 +60,6 @@ export function useEnergyFlow(): EnergyFlow {
       }))
       .sort((a, b) => b.totalPower - a.totalPower);
 
-    // Filtered view for the flow diagram (only active rooms/devices)
     const rooms = allRooms
       .map((room) => {
         const activeDevices = room.devices.filter((d) => d.power >= 0.5);
@@ -130,5 +71,5 @@ export function useEnergyFlow(): EnergyFlow {
     const sonstige = Math.max(0, totalWatts - knownTotal);
 
     return { rooms, allRooms, totalPower: totalWatts, sonstige };
-  }, [totalKw, eve1, eve2, shelly, trockner, waschmaschine, netzwerk, geschirrspuler, gefrierschrank, homePodBad, homePodSchlaf, sonosBuro, standleuchte, fotowand, tradfriBulb, wohnzimmerSpeaker]);
+  }, [entities]);
 }

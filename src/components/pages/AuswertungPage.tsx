@@ -7,13 +7,19 @@ import { PeriodSelector } from "@/components/history/PeriodSelector";
 import { KpiRow } from "@/components/history/KpiRow";
 import { ConsumptionChart } from "@/components/history/ConsumptionChart";
 import { CostChart } from "@/components/history/CostChart";
-import { LoadCurveChart } from "@/components/history/LoadCurveChart";
-import { SpotPriceHistoryChart } from "@/components/history/SpotPriceHistoryChart";
+import { TopConsumersCard } from "@/components/auswertung/TopConsumersCard";
+import { RoomHistoryCard } from "@/components/auswertung/RoomHistoryCard";
+import { HeatmapCard } from "@/components/auswertung/HeatmapCard";
+import { StandbyCard } from "@/components/auswertung/StandbyCard";
 import { useHistoryData, type TimePeriod } from "@/lib/hooks/useHistoryData";
+import { useDeviceEnergyHistory } from "@/lib/hooks/useDeviceEnergyHistory";
+import { useStandbyAnalysis } from "@/lib/hooks/useStandbyAnalysis";
 
-export function VerlaufPage() {
+export function AuswertungPage() {
   const [period, setPeriod] = useState<TimePeriod>("7d");
   const data = useHistoryData(period);
+  const deviceData = useDeviceEnergyHistory(period);
+  const standby = useStandbyAnalysis(period);
 
   return (
     <main className="mx-auto max-w-7xl space-y-5 p-5 md:p-8">
@@ -36,9 +42,14 @@ export function VerlaufPage() {
         <CostChart data={data.cost} loading={data.loading} />
       </div>
 
-      <LoadCurveChart data={data.loadCurve} loading={data.loading} />
+      <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
+        <TopConsumersCard data={deviceData} />
+        <RoomHistoryCard data={deviceData} />
+      </div>
 
-      <SpotPriceHistoryChart data={data.spotPrice} loading={data.loading} />
+      <HeatmapCard />
+
+      <StandbyCard data={standby} />
     </main>
   );
 }

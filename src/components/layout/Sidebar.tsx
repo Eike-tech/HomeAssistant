@@ -3,12 +3,12 @@
 import { LayoutDashboard, Zap, History, Bot } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 
-export type Page = "dashboard" | "energie" | "verlauf" | "automationen";
+export type Page = "dashboard" | "energie" | "auswertung" | "automationen";
 
 const navItems: { id: Page; label: string; icon: typeof LayoutDashboard }[] = [
   { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
   { id: "energie", label: "Energie", icon: Zap },
-  { id: "verlauf", label: "Verlauf", icon: History },
+  { id: "auswertung", label: "Auswertung", icon: History },
   { id: "automationen", label: "Automationen", icon: Bot },
 ];
 

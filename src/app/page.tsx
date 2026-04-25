@@ -6,7 +6,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { Sidebar, type Page } from "@/components/layout/Sidebar";
 import { DashboardContent } from "@/components/pages/DashboardContent";
 import { EnergiePage } from "@/components/pages/EnergiePage";
-import { VerlaufPage } from "@/components/pages/VerlaufPage";
+import { AuswertungPage } from "@/components/pages/AuswertungPage";
 import { AutomationenPage } from "@/components/pages/AutomationenPage";
 
 export default function DashboardPage() {
@@ -20,7 +20,7 @@ export default function DashboardPage() {
           <div className="flex-1 overflow-y-auto pb-16 md:pb-0">
             {activePage === "dashboard" && <DashboardContent />}
             {activePage === "energie" && <EnergiePage />}
-            {activePage === "verlauf" && <VerlaufPage />}
+            {activePage === "auswertung" && <AuswertungPage />}
             {activePage === "automationen" && <AutomationenPage />}
           </div>
         </div>
