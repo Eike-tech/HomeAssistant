@@ -100,7 +100,7 @@ function startToIso(start: string | number): string {
 /** Get the delta value for each entry — prefer `change`, fall back to computing deltas from `sum` */
 function extractDeltas(entries: StatisticsEntry[]): number[] {
   if (entries.length > 0 && entries[0].change !== undefined) {
-    return entries.map((e) => e.change ?? 0);
+    return entries.map((e) => Math.max(0, e.change ?? 0));
   }
   if (entries.length > 0 && entries[0].sum !== undefined) {
     return entries.map((e, i) => {
@@ -110,7 +110,15 @@ function extractDeltas(entries: StatisticsEntry[]): number[] {
       return Math.max(0, curr - prev);
     });
   }
-  return entries.map((e) => e.state ?? e.mean ?? 0);
+  return entries.map((e) => Math.max(0, e.state ?? e.mean ?? 0));
+}
+
+/**
+ * For periodic-reset counters (e.g. daily/monthly cost): the bucket-end `state`
+ * is the period total just before reset. Prefer `state`, fall back to `max`.
+ */
+function extractStateValues(entries: StatisticsEntry[]): number[] {
+  return entries.map((e) => Math.max(0, e.state ?? e.max ?? e.mean ?? 0));
 }
 
 function getEntries(result: Record<string, StatisticsEntry[]>, preferredKey: string): StatisticsEntry[] {
@@ -153,8 +161,9 @@ export function useHistoryData(period: TimePeriod): HistoryData {
     try {
       if (!resolvedIdsRef.current) {
         resolvedIdsRef.current = await resolveStatisticIds(connection, {
-          consumption: ENTITIES.energy.dailyConsumption,
-          cost: ENTITIES.energy.dailyCost,
+          meter: ENTITIES.energy.meterReading,
+          dailyCost: ENTITIES.energy.dailyCost,
+          monthlyCost: ENTITIES.energy.monthlyCost,
         });
       }
 
@@ -162,14 +171,18 @@ export function useHistoryData(period: TimePeriod): HistoryData {
       const { start, end, statPeriod } = getPeriodRange(period);
       const { prevStart, prevEnd } = getPrevPeriodRange(period, start);
 
+      // Cost source depends on period: daily-reset counter for short ranges,
+      // monthly-reset counter for long ranges. Both are read via bucket-end `state`.
+      const costStatId = statPeriod === "month" ? ids.monthlyCost : ids.dailyCost;
+
       const [consumptionStats, costStats, prevConsumptionStats, prevCostStats] = await Promise.all([
-        fetchStatistics(connection, [ids.consumption], start, end, statPeriod),
-        fetchStatistics(connection, [ids.cost], start, end, statPeriod),
-        fetchStatistics(connection, [ids.consumption], prevStart, prevEnd, statPeriod),
-        fetchStatistics(connection, [ids.cost], prevStart, prevEnd, statPeriod),
+        fetchStatistics(connection, [ids.meter], start, end, statPeriod),
+        fetchStatistics(connection, [costStatId], start, end, statPeriod),
+        fetchStatistics(connection, [ids.meter], prevStart, prevEnd, statPeriod),
+        fetchStatistics(connection, [costStatId], prevStart, prevEnd, statPeriod),
       ]);
 
-      const consumptionEntries = getEntries(consumptionStats, ids.consumption);
+      const consumptionEntries = getEntries(consumptionStats, ids.meter);
       const consumptionDeltas = extractDeltas(consumptionEntries);
       const consumption: ChartPoint[] = consumptionEntries.map((e, i) => {
         const iso = startToIso(e.start);
@@ -181,31 +194,31 @@ export function useHistoryData(period: TimePeriod): HistoryData {
         };
       });
 
-      const costEntries = getEntries(costStats, ids.cost);
-      const costDeltas = extractDeltas(costEntries);
+      const costEntries = getEntries(costStats, costStatId);
+      const costValues = extractStateValues(costEntries);
       const cost: ChartPoint[] = costEntries.map((e, i) => {
         const iso = startToIso(e.start);
         const dateStr = iso.slice(0, 10);
         return {
           date: dateStr,
           label: statPeriod === "month" ? formatMonthLabel(iso.slice(0, 7)) : formatDayLabel(dateStr),
-          value: costDeltas[i],
+          value: costValues[i],
         };
       });
 
       const totalConsumption = consumptionDeltas.reduce((sum, v) => sum + v, 0);
-      const totalCost = costDeltas.reduce((sum, v) => sum + v, 0);
+      const totalCost = costValues.reduce((sum, v) => sum + v, 0);
       const numDays = consumptionEntries.length || 1;
 
-      const prevConsumptionEntries = getEntries(prevConsumptionStats, ids.consumption);
-      const prevCostEntries = getEntries(prevCostStats, ids.cost);
+      const prevConsumptionEntries = getEntries(prevConsumptionStats, ids.meter);
+      const prevCostEntries = getEntries(prevCostStats, costStatId);
       const prevConsumptionDeltas = extractDeltas(prevConsumptionEntries);
-      const prevCostDeltas = extractDeltas(prevCostEntries);
+      const prevCostValues = extractStateValues(prevCostEntries);
       const prevTotalConsumption = prevConsumptionEntries.length > 0
         ? prevConsumptionDeltas.reduce((sum, v) => sum + v, 0)
         : null;
       const prevTotalCost = prevCostEntries.length > 0
-        ? prevCostDeltas.reduce((sum, v) => sum + v, 0)
+        ? prevCostValues.reduce((sum, v) => sum + v, 0)
         : null;
 
       setData({
