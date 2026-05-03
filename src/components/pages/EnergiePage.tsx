@@ -1,10 +1,12 @@
 "use client";
 
 import { Header } from "@/components/layout/Header";
-import { EnergyFlowDiagram } from "@/components/energy/SankeyDiagram";
+import { EnergyHero } from "@/components/energy/EnergyHero";
+import { SpotpreisHorizont } from "@/components/energy/SpotpreisHorizont";
+import { ParticleFlow } from "@/components/energy/ParticleFlow";
+import { RoomDots } from "@/components/energy/RoomDots";
 import { EnergyStatsCard } from "@/components/energy/EnergyStatsCard";
 import { RoomBreakdownCard } from "@/components/energy/RoomBreakdownCard";
-import { EnhancedSpotPriceChart } from "@/components/energy/EnhancedSpotPriceChart";
 
 export function EnergiePage() {
 
@@ -12,17 +14,17 @@ export function EnergiePage() {
     <main className="mx-auto max-w-7xl space-y-5 p-5 md:p-8">
       <Header />
 
-      {/* Energy Flow Diagram */}
-      <EnergyFlowDiagram />
+      <EnergyHero variant="energie" />
 
-      {/* Room breakdown — all consumers grouped by room */}
+      <SpotpreisHorizont />
+
+      <ParticleFlow />
+
+      <RoomDots />
+
+      {/* Detail-Views — bleiben vorerst, werden in Phase 5 als Cockpit-Zonen restyled */}
       <RoomBreakdownCard />
-
-      {/* Energy Stats */}
       <EnergyStatsCard />
-
-      {/* Price Chart */}
-      <EnhancedSpotPriceChart />
     </main>
   );
 }

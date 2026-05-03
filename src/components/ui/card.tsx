@@ -10,10 +10,14 @@ function Card({
     <div
       data-slot="card"
       className={cn(
-        "surface-glass group/card relative flex flex-col gap-5 rounded-[22px] p-6 text-card-foreground",
-        "transition-[transform,box-shadow] duration-300 ease-out",
+        "group/card relative flex flex-col gap-5 overflow-hidden rounded-[22px] p-6 text-card-foreground",
+        "transition-[background,box-shadow] duration-300 ease-out",
         className
       )}
+      style={{
+        background: "var(--cockpit-canvas-soft)",
+        boxShadow: "inset 0 1px 0 0 var(--cockpit-edge-soft)",
+      }}
       {...props}
     />
   )
@@ -37,10 +41,10 @@ function CardTitle({ className, ...props }: React.ComponentProps<"div">) {
     <div
       data-slot="card-title"
       className={cn(
-        "text-[13px] font-semibold leading-snug tracking-tight uppercase text-muted-foreground/90",
+        "text-[11px] font-medium uppercase",
         className
       )}
-      style={{ letterSpacing: "0.04em" }}
+      style={{ letterSpacing: "0.08em", color: "var(--cockpit-ink-dim)" }}
       {...props}
     />
   )
@@ -81,9 +85,10 @@ function CardFooter({ className, ...props }: React.ComponentProps<"div">) {
     <div
       data-slot="card-footer"
       className={cn(
-        "flex items-center border-t border-white/[0.08] pt-4",
+        "flex items-center pt-4",
         className
       )}
+      style={{ borderTop: "1px solid var(--cockpit-edge-soft)" }}
       {...props}
     />
   )

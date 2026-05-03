@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { HassProvider } from "@/lib/hooks/useHass";
+import { AmbientAccentMount } from "@/lib/hooks/useAmbientAccent";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { Sidebar, type Page } from "@/components/layout/Sidebar";
 import { DashboardContent } from "@/components/pages/DashboardContent";
@@ -14,6 +15,7 @@ export default function DashboardPage() {
 
   return (
     <HassProvider>
+      <AmbientAccentMount />
       <TooltipProvider>
         <div className="flex min-h-screen">
           <Sidebar activePage={activePage} onNavigate={setActivePage} />

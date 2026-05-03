@@ -49,6 +49,10 @@
 }
 
 :root {
+  /* COCKPIT — dynamic accent fallback (overridden live by useAmbientAccent) */
+  --accent-live:        oklch(0.70 0.15 220);
+  --accent-live-glow:   oklch(0.70 0.15 220 / 0.30);
+
   --background: oklch(0.985 0 0);
   --foreground: oklch(0.145 0 0);
   --card: oklch(1 0 0);
@@ -132,6 +136,48 @@
   --system-blue:   oklch(0.7 0.2 254);
   --system-yellow: oklch(0.88 0.18 90);
   --system-purple: oklch(0.72 0.2 315);
+
+  /* COCKPIT — base canvas */
+  --cockpit-canvas:        oklch(0.08 0.02 240);
+  --cockpit-canvas-soft:   oklch(0.11 0.02 240);
+  --cockpit-ink:           oklch(0.97 0 0);
+  --cockpit-ink-dim:       oklch(0.62 0.005 260);
+  --cockpit-ink-faint:     oklch(0.40 0.005 260);
+
+  /* COCKPIT — zone edges (no card-borders, just hints) */
+  --cockpit-edge-soft:     oklch(1 0 0 / 0.04);
+  --cockpit-edge-strong:   oklch(1 0 0 / 0.08);
+
+  /* COCKPIT — static signal colors */
+  --signal-tesla:          oklch(0.65 0.22 25);
+  --signal-tesla-glow:     oklch(0.65 0.22 25 / 0.35);
+  --signal-warn:           oklch(0.78 0.18 75);
+  --signal-ok:             oklch(0.78 0.18 150);
+  --signal-idle:           oklch(0.45 0.02 220);
+
+  /* COCKPIT — spacing & radii (mobile defaults) */
+  --cockpit-pad-page:      24px;
+  --cockpit-pad-zone:      20px;
+  --cockpit-gap-zone:      32px;
+  --cockpit-radius-zone:   32px;
+  --cockpit-radius-pill:   999px;
+
+  /* COCKPIT — motion */
+  --motion-fast:    180ms;
+  --motion-base:    320ms;
+  --motion-slow:    640ms;
+  --motion-ambient: 8s;
+  --ease-out:       cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-spring:    cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@media (min-width: 1024px) {
+  .dark {
+    --cockpit-pad-page:    48px;
+    --cockpit-pad-zone:    40px;
+    --cockpit-gap-zone:    56px;
+    --cockpit-radius-zone: 40px;
+  }
 }
 
 @keyframes sankey-flow {
@@ -147,6 +193,12 @@
 @keyframes card-in {
   from { opacity: 0; transform: translateY(6px); }
   to   { opacity: 1; transform: translateY(0); }
+}
+
+/* COCKPIT — slow opacity pulse for the Tesla SoC ring while charging */
+@keyframes cockpit-pulse {
+  0%, 100% { opacity: 0.7; }
+  50%      { opacity: 1.0; }
 }
 
 @layer base {
@@ -170,7 +222,9 @@
     text-rendering: optimizeLegibility;
   }
 
-  /* Ambient background glow — layered radial gradients */
+  /* Ambient background glow — layered radial gradients
+     The first layer is driven by --accent-live (set by useAmbientAccent
+     based on spot-price quantile). Body.is-charging swaps it to Tesla red. */
   body::before {
     content: "";
     position: fixed;
@@ -178,9 +232,19 @@
     z-index: -1;
     pointer-events: none;
     background:
-      radial-gradient(1200px 700px at 8% -10%, oklch(0.72 0.17 60 / 0.10), transparent 60%),
-      radial-gradient(900px 600px at 110% 10%, oklch(0.7 0.2 254 / 0.08), transparent 60%),
-      radial-gradient(900px 600px at 50% 110%, oklch(0.72 0.2 315 / 0.06), transparent 60%);
+      radial-gradient(1400px 800px at 50% -15%, var(--accent-live-glow), transparent 65%),
+      radial-gradient(1200px 700px at 8% -10%, oklch(0.72 0.17 60 / 0.06), transparent 60%),
+      radial-gradient(900px 600px at 110% 10%, oklch(0.7 0.2 254 / 0.05), transparent 60%),
+      radial-gradient(900px 600px at 50% 110%, oklch(0.72 0.2 315 / 0.04), transparent 60%);
+    transition: background var(--motion-slow, 640ms) var(--ease-out, ease-out);
+  }
+
+  body.is-charging::before {
+    background:
+      radial-gradient(1400px 800px at 50% -15%, var(--signal-tesla-glow), transparent 65%),
+      radial-gradient(1200px 700px at 8% -10%, oklch(0.72 0.17 60 / 0.06), transparent 60%),
+      radial-gradient(900px 600px at 110% 10%, oklch(0.7 0.2 254 / 0.05), transparent 60%),
+      radial-gradient(900px 600px at 50% 110%, oklch(0.72 0.2 315 / 0.04), transparent 60%);
   }
 
   :root:not(.dark) body::before {
