@@ -1,5 +1,5 @@
 name: Dashboard
-version: "1.14.0"
+version: "1.15.0"
 slug: dashboard
 description: Custom Home Assistant Dashboard with energy, climate, car, and media controls
 url: https://github.com/Eike-tech/HomeAssistant
@@ -14,6 +14,10 @@ panel_icon: mdi:view-dashboard
 panel_title: Dashboard
 homeassistant_api: true
 auth_api: true
+ports:
+  3000/tcp: 3001
+ports_description:
+  3000/tcp: "Direct LAN access for /ipad-legacy (legacy browsers without HA login)"
 options:
   hass_token: ""
   tibber_token: ""
