@@ -68,3 +68,80 @@ export async function fetchTibberConsumption(
   const nodes = json.data?.viewer?.homes?.[0]?.consumption?.nodes;
   return nodes ?? [];
 }
+
+export type TibberPriceLevel =
+  | "VERY_CHEAP"
+  | "CHEAP"
+  | "NORMAL"
+  | "EXPENSIVE"
+  | "VERY_EXPENSIVE"
+  | "NONE";
+
+export interface TibberPriceNode {
+  startsAt: string;
+  total: number;
+  energy: number;
+  tax: number;
+  level: TibberPriceLevel;
+}
+
+interface PriceInfoResponse {
+  viewer: {
+    homes: Array<{
+      currentSubscription: {
+        priceInfo: {
+          today: TibberPriceNode[];
+          tomorrow: TibberPriceNode[];
+        } | null;
+      } | null;
+    }>;
+  };
+}
+
+const PRICE_QUERY = `{
+  viewer {
+    homes {
+      currentSubscription {
+        priceInfo {
+          today { startsAt total energy tax level }
+          tomorrow { startsAt total energy tax level }
+        }
+      }
+    }
+  }
+}`;
+
+export async function fetchTibberPrices(): Promise<{
+  today: TibberPriceNode[];
+  tomorrow: TibberPriceNode[];
+}> {
+  const token = process.env.TIBBER_TOKEN;
+  if (!token) {
+    throw new Error("TIBBER_TOKEN is not configured");
+  }
+
+  const res = await fetch(ENDPOINT, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify({ query: PRICE_QUERY }),
+    cache: "no-store",
+  });
+
+  if (!res.ok) {
+    const text = await res.text().catch(() => "");
+    throw new Error(`Tibber API ${res.status}: ${text || res.statusText}`);
+  }
+
+  const json: GraphQLResponse<PriceInfoResponse> = await res.json();
+  if (json.errors && json.errors.length > 0) {
+    throw new Error(`Tibber GraphQL error: ${json.errors.map((e) => e.message).join("; ")}`);
+  }
+  const priceInfo = json.data?.viewer?.homes?.[0]?.currentSubscription?.priceInfo;
+  return {
+    today: priceInfo?.today ?? [],
+    tomorrow: priceInfo?.tomorrow ?? [],
+  };
+}

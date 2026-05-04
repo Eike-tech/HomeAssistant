@@ -39,3 +39,9 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# local dev tooling
+/.claude/
+
+# runtime-injected by add-on (contains hass token in dev)
+/public/config.json

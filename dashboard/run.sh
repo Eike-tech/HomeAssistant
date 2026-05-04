@@ -8,6 +8,7 @@ log() {
 # Read long-lived token from add-on config
 HASS_TOKEN=""
 TIBBER_TOKEN=""
+IPAD_CALENDARS_JSON="[]"
 if [ -n "${SUPERVISOR_TOKEN:-}" ]; then
     ADDON_INFO=$(curl -s -H "Authorization: Bearer ${SUPERVISOR_TOKEN}" \
         http://supervisor/addons/self/info 2>/dev/null || true)
@@ -19,6 +20,8 @@ if [ -n "${SUPERVISOR_TOKEN:-}" ]; then
     if [ -n "$TIBBER_OPT" ]; then
         TIBBER_TOKEN="$TIBBER_OPT"
     fi
+    # ipad_calendar_entities is a list option — serialize as compact JSON array
+    IPAD_CALENDARS_JSON=$(echo "$ADDON_INFO" | jq -c '.data.options.ipad_calendar_entities // []' 2>/dev/null || echo "[]")
 fi
 export TIBBER_TOKEN
 
@@ -61,7 +64,8 @@ cat > /app/public/config.json <<CFGEOF
 {
   "hassUrl": "${HASS_URL}",
   "hassToken": "${HASS_TOKEN}",
-  "ingressPath": "${INGRESS_PATH}"
+  "ingressPath": "${INGRESS_PATH}",
+  "ipadCalendarEntities": ${IPAD_CALENDARS_JSON}
 }
 CFGEOF
 log "Runtime config written to /app/public/config.json"

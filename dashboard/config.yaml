@@ -1,5 +1,5 @@
 name: Dashboard
-version: "1.12.0"
+version: "1.13.0"
 slug: dashboard
 description: Custom Home Assistant Dashboard with energy, climate, car, and media controls
 url: https://github.com/Eike-tech/HomeAssistant
@@ -17,6 +17,9 @@ auth_api: true
 options:
   hass_token: ""
   tibber_token: ""
+  ipad_calendar_entities: []
 schema:
   hass_token: str
   tibber_token: str?
+  ipad_calendar_entities:
+    - str
