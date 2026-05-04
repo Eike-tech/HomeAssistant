@@ -1,5 +1,6 @@
 // Server-rendered, Safari 12-compatible iPad dashboard.
-// No client-side JS, no Tailwind, no oklch. Auto-refreshes every 30 seconds via meta refresh.
+// Magazine / editorial light theme — system serif headlines + sans body, hairline dividers,
+// no client JS, no oklch, no flex-gap. Auto-refreshes every 30 seconds via meta refresh.
 
 import {
   fetchHaState,
@@ -21,11 +22,11 @@ const COST_TODAY_ENTITY = "sensor.tibber_pulse_mount_cleltze_kumulierte_kosten";
 const FEED_ENTITY = "sensor.tibber_pulse_mount_cleltze_einspeiseleistung"; // W
 const WEATHER_ENTITY = "weather.forecast_home";
 
-const WASTE_SENSORS: { entityId: string; label: string; color: string }[] = [
-  { entityId: "sensor.waste_collection_schedule_restabfall", label: "Restabfall", color: "#8a8a8a" },
-  { entityId: "sensor.waste_collection_schedule_bioabfall", label: "Bioabfall", color: "#5aa86a" },
-  { entityId: "sensor.waste_collection_schedule_gelber_sack_tonne", label: "Gelber Sack", color: "#d4b04a" },
-  { entityId: "sensor.waste_collection_schedule_altpapier", label: "Altpapier", color: "#5a8fc8" },
+const WASTE_SENSORS: { entityId: string; label: string }[] = [
+  { entityId: "sensor.waste_collection_schedule_restabfall", label: "Restabfall" },
+  { entityId: "sensor.waste_collection_schedule_bioabfall", label: "Bioabfall" },
+  { entityId: "sensor.waste_collection_schedule_gelber_sack_tonne", label: "Gelber Sack" },
+  { entityId: "sensor.waste_collection_schedule_altpapier", label: "Altpapier" },
 ];
 
 const DATE_KEY_RE = /^\d{4}-\d{2}-\d{2}$/;
@@ -50,17 +51,13 @@ function fmtPriceCt(eurPerKwh: number): string {
   return `${(eurPerKwh * 100).toFixed(1)} ct`;
 }
 
+// Editorial palette: muted neutrals → green/amber/red on a creme background
 function priceColor(total: number, min: number, max: number): string {
-  if (max === min) return "hsl(145, 55%, 50%)";
+  if (max === min) return "#9ba18b";
   const q = (total - min) / (max - min);
-  // hue: 145 (green) → 50 (yellow) → 0 (red)
-  let hue: number;
-  if (q < 0.5) {
-    hue = 145 - (145 - 50) * (q / 0.5);
-  } else {
-    hue = 50 - 50 * ((q - 0.5) / 0.5);
-  }
-  return `hsl(${hue.toFixed(0)}, 70%, 55%)`;
+  if (q < 0.33) return "#2f6b3d"; // günstig
+  if (q < 0.66) return "#b07a1f"; // mittel
+  return "#a83020"; // teuer
 }
 
 function parseLocalDate(key: string): Date {
@@ -89,151 +86,8 @@ function localDateKey(d: Date): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
 
-// ─── Section renderers ─────────────────────────────────────────
-
-function renderClock(now: Date): string {
-  const time = now.toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" });
-  const date = now.toLocaleDateString("de-DE", { weekday: "long", day: "numeric", month: "long" });
-  return `
-    <header class="clock">
-      <div class="time">${esc(time)}</div>
-      <div class="date">${esc(date)}</div>
-    </header>`;
-}
-
-function renderPrices(today: TibberPriceNode[]): string {
-  if (today.length === 0) {
-    return `<section class="card prices"><h2>Strompreise heute</h2><div class="empty">Keine Preisdaten verfügbar.</div></section>`;
-  }
-  const totals = today.map((n) => n.total);
-  const min = Math.min(...totals);
-  const max = Math.max(...totals);
-  const avg = totals.reduce((s, x) => s + x, 0) / totals.length;
-  const now = new Date();
-  const currentHour = new Date(now);
-  currentHour.setMinutes(0, 0, 0);
-
-  const cheapest = new Set<number>(
-    today
-      .map((n, i) => ({ i, t: n.total, ts: new Date(n.startsAt).getTime() }))
-      .filter((x) => x.ts >= currentHour.getTime())
-      .sort((a, b) => a.t - b.t)
-      .slice(0, 3)
-      .map((x) => x.i)
-  );
-
-  let currentIdx = -1;
-  let currentTotal = today[0]?.total ?? 0;
-  for (let i = 0; i < today.length; i++) {
-    const ts = new Date(today[i].startsAt).getTime();
-    if (ts === currentHour.getTime()) {
-      currentIdx = i;
-      currentTotal = today[i].total;
-      break;
-    }
-  }
-
-  const bars = today
-    .map((n, i) => {
-      const ts = new Date(n.startsAt).getTime();
-      const isPast = ts < currentHour.getTime();
-      const heightPct = max === min ? 50 : 18 + ((n.total - min) / (max - min)) * 78;
-      const bg = priceColor(n.total, min, max);
-      const opacity = isPast ? "0.32" : "1";
-      const isCurrent = i === currentIdx;
-      const ringStyle = isCurrent ? "box-shadow: 0 0 0 2px #fff;" : "";
-      const star = cheapest.has(i) && !isPast ? '<div class="star"></div>' : '<div class="star-pad"></div>';
-      return `<div class="bar-col">${star}<div class="bar" style="height:${heightPct.toFixed(2)}%;background:${bg};opacity:${opacity};${ringStyle}"></div></div>`;
-    })
-    .join("");
-
-  return `
-    <section class="card prices">
-      <div class="prices-head">
-        <div>
-          <h2>Strompreise heute</h2>
-          <div class="big-num">${currentIdx >= 0 ? esc(fmtPriceCt(currentTotal)) : "—"}</div>
-          <div class="sub">jetzt</div>
-        </div>
-        <div class="prices-stats">
-          <div>Min <b>${esc(fmtPriceCt(min))}</b> · Ø <b>${esc(fmtPriceCt(avg))}</b> · Max <b>${esc(fmtPriceCt(max))}</b></div>
-        </div>
-      </div>
-      <div class="bars">${bars}</div>
-      <div class="hour-axis"><span>00</span><span>06</span><span>12</span><span>18</span><span>23</span></div>
-    </section>`;
-}
-
-function renderLive(states: Record<string, HaState | null>): string {
-  const power = num(states[POWER_ENTITY]); // kW
-  const price = num(states[PRICE_ENTITY]); // EUR/kWh
-  const cost = num(states[COST_TODAY_ENTITY]); // EUR
-  const feed = num(states[FEED_ENTITY]); // W
-
-  const ctPerHour = power !== null && price !== null ? power * price * 100 : null;
-  const feedStr = feed !== null && feed > 0
-    ? Math.abs(feed) >= 1000
-      ? `${(feed / 1000).toFixed(2)} kW`
-      : `${Math.round(feed)} W`
-    : null;
-
-  return `
-    <section class="card live">
-      <div class="card-head">
-        <h2>Live-Verbrauch</h2>
-        ${feedStr ? `<span class="pill">Einspeisung <b>${esc(feedStr)}</b></span>` : ""}
-      </div>
-      <div class="big-row">
-        <span class="big-num">${power !== null ? esc(power.toFixed(2)) : "—"}</span>
-        <span class="unit">kW</span>
-        ${ctPerHour !== null ? `<span class="aside">≈ ${esc(ctPerHour.toFixed(0))} ct/h</span>` : ""}
-      </div>
-      <div class="sub">Kosten heute <b>${cost !== null ? esc(cost.toFixed(2)) + " €" : "—"}</b></div>
-    </section>`;
-}
-
-function renderWaste(states: Record<string, HaState | null>): string {
-  const now = new Date();
-  type Entry = { date: Date; type: string; days: number; color: string };
-  const all: Entry[] = [];
-  for (const cfg of WASTE_SENSORS) {
-    const s = states[cfg.entityId];
-    if (!s?.attributes) continue;
-    for (const key of Object.keys(s.attributes)) {
-      if (!DATE_KEY_RE.test(key)) continue;
-      const date = parseLocalDate(key);
-      const days = daysBetween(now, date);
-      if (days < 0 || days > 21) continue;
-      all.push({ date, type: cfg.label, days, color: cfg.color });
-    }
-  }
-  all.sort((a, b) => a.date.getTime() - b.date.getTime());
-  const top = all.slice(0, 4);
-
-  if (top.length === 0) {
-    return `<section class="card waste"><h2>Abfallkalender</h2><div class="empty">Keine Termine in den nächsten 21 Tagen.</div></section>`;
-  }
-  const items = top
-    .map((u, i) => {
-      const dateStr = u.date.toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit" });
-      const relStr = fmtRelative(u.days, u.date);
-      const opacity = i === 0 ? "1" : "0.7";
-      const urgent = u.days <= 1 ? "color:#ff9243;" : "";
-      return `<li><span class="bar-tag" style="background:${u.color};opacity:${opacity};"></span><span class="ws-type">${esc(u.type)}</span><span class="ws-rel" style="${urgent}">${esc(relStr)} · ${esc(dateStr)}</span></li>`;
-    })
-    .join("");
-  return `<section class="card waste"><h2>Abfallkalender</h2><ul class="ws-list">${items}</ul></section>`;
-}
-
-function renderWeather(state: HaState | null): string {
-  const condition = state?.state ?? null;
-  const tempRaw = state?.attributes?.temperature;
-  const temp = typeof tempRaw === "number" ? tempRaw : null;
-  const humRaw = state?.attributes?.humidity;
-  const hum = typeof humRaw === "number" ? humRaw : null;
-  const windRaw = state?.attributes?.wind_speed;
-  const wind = typeof windRaw === "number" ? windRaw : null;
-
+function condLabel(cond: string | null): string {
+  if (!cond) return "—";
   const map: Record<string, string> = {
     "clear-night": "Klare Nacht",
     cloudy: "Bewölkt",
@@ -241,7 +95,7 @@ function renderWeather(state: HaState | null): string {
     hail: "Hagel",
     lightning: "Gewitter",
     "lightning-rainy": "Gewitter mit Regen",
-    partlycloudy: "Teilw. bewölkt",
+    partlycloudy: "Teilweise bewölkt",
     pouring: "Starker Regen",
     rainy: "Regen",
     snowy: "Schnee",
@@ -251,24 +105,177 @@ function renderWeather(state: HaState | null): string {
     "windy-variant": "Windig",
     exceptional: "Extrem",
   };
-  const label = condition ? map[condition] ?? condition.replace(/-/g, " ") : "—";
+  return map[cond] ?? cond.replace(/-/g, " ");
+}
 
+// ─── Section renderers ─────────────────────────────────────────
+
+function renderMasthead(now: Date): string {
+  const dateLong = now
+    .toLocaleDateString("de-DE", { weekday: "long", day: "numeric", month: "long", year: "numeric" })
+    .toUpperCase();
+  const time = now.toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" });
   return `
-    <section class="card weather">
-      <h2>Wetter</h2>
-      <div class="big-row">
-        <span class="big-num">${temp !== null ? esc(Math.round(temp)) + "°" : "—"}</span>
-      </div>
-      <div class="sub">${esc(label)}</div>
-      <div class="weather-extras">
+    <header class="masthead">
+      <div class="masthead-date">${esc(dateLong)}</div>
+      <div class="masthead-time">${esc(time)}</div>
+    </header>`;
+}
+
+function renderHero(today: TibberPriceNode[], weather: HaState | null): string {
+  // Weather block (right side of hero)
+  const tempRaw = weather?.attributes?.temperature;
+  const temp = typeof tempRaw === "number" ? tempRaw : null;
+  const humRaw = weather?.attributes?.humidity;
+  const hum = typeof humRaw === "number" ? humRaw : null;
+  const windRaw = weather?.attributes?.wind_speed;
+  const wind = typeof windRaw === "number" ? windRaw : null;
+  const condition = weather?.state ?? null;
+
+  const weatherBlock = `
+    <div class="hero-weather">
+      <div class="weather-temp">${temp !== null ? esc(Math.round(temp)) + "°" : "—"}</div>
+      <div class="weather-cond">${esc(condLabel(condition))}</div>
+      <div class="weather-meta">
         ${hum !== null ? `<span>${esc(Math.round(hum))} % rF</span>` : ""}
         ${wind !== null ? `<span>${esc(Math.round(wind))} km/h Wind</span>` : ""}
       </div>
+    </div>`;
+
+  // Prices block (left side of hero)
+  let priceBlock: string;
+  if (today.length === 0) {
+    priceBlock = `
+      <div class="hero-price">
+        <div class="section-label">Strompreis heute</div>
+        <div class="empty-large">Keine Preisdaten</div>
+      </div>`;
+  } else {
+    const totals = today.map((n) => n.total);
+    const min = Math.min(...totals);
+    const max = Math.max(...totals);
+    const avg = totals.reduce((s, x) => s + x, 0) / totals.length;
+    const now = new Date();
+    const currentHour = new Date(now);
+    currentHour.setMinutes(0, 0, 0);
+
+    let currentTotal: number | null = null;
+    let currentIdx = -1;
+    for (let i = 0; i < today.length; i++) {
+      const ts = new Date(today[i].startsAt).getTime();
+      if (ts === currentHour.getTime()) {
+        currentTotal = today[i].total;
+        currentIdx = i;
+        break;
+      }
+    }
+
+    const cheapest = new Set<number>(
+      today
+        .map((n, i) => ({ i, t: n.total, ts: new Date(n.startsAt).getTime() }))
+        .filter((x) => x.ts >= currentHour.getTime())
+        .sort((a, b) => a.t - b.t)
+        .slice(0, 3)
+        .map((x) => x.i)
+    );
+
+    const bars = today
+      .map((n, i) => {
+        const ts = new Date(n.startsAt).getTime();
+        const isPast = ts < currentHour.getTime();
+        const isCurrent = i === currentIdx;
+        const opacity = isPast ? "0.32" : "1";
+        const bg = priceColor(n.total, min, max);
+        const cls =
+          "bar" +
+          (isCurrent ? " bar-current" : "") +
+          (cheapest.has(i) && !isPast ? " bar-cheap" : "");
+        return `<div class="${cls}" style="background:${bg};opacity:${opacity};"></div>`;
+      })
+      .join("");
+
+    priceBlock = `
+      <div class="hero-price">
+        <div class="section-label">Strompreis heute</div>
+        <div class="hero-num">${currentTotal !== null ? esc(fmtPriceCt(currentTotal)) : "—"}</div>
+        <div class="hero-stats">Min ${esc(fmtPriceCt(min))} &nbsp;·&nbsp; Ø ${esc(fmtPriceCt(avg))} &nbsp;·&nbsp; Max ${esc(fmtPriceCt(max))}</div>
+        <div class="bars">${bars}</div>
+        <div class="hour-axis"><span>00</span><span>06</span><span>12</span><span>18</span><span>23</span></div>
+      </div>`;
+  }
+
+  return `
+    <section class="hero">
+      ${priceBlock}
+      <div class="hero-divider"></div>
+      ${weatherBlock}
     </section>`;
 }
 
+function renderLive(states: Record<string, HaState | null>): string {
+  const power = num(states[POWER_ENTITY]); // kW
+  const price = num(states[PRICE_ENTITY]); // EUR/kWh
+  const cost = num(states[COST_TODAY_ENTITY]); // EUR
+  const feed = num(states[FEED_ENTITY]); // W
+  const ctPerHour = power !== null && price !== null ? power * price * 100 : null;
+  const feedStr = feed !== null && feed > 0
+    ? Math.abs(feed) >= 1000
+      ? `${(feed / 1000).toFixed(2)} kW`
+      : `${Math.round(feed)} W`
+    : null;
+
+  return `
+    <div class="col live">
+      <div class="section-label">Verbrauch jetzt</div>
+      <div class="col-num">${power !== null ? esc(power.toFixed(2)) : "—"} <span class="col-unit">kW</span></div>
+      ${ctPerHour !== null ? `<div class="col-sub">≈ ${esc(ctPerHour.toFixed(0))} ct/h</div>` : ""}
+      <div class="col-line">Kosten heute <b>${cost !== null ? esc(cost.toFixed(2)) + " €" : "—"}</b></div>
+      ${feedStr ? `<div class="col-line">Einspeisung <b>${esc(feedStr)}</b></div>` : ""}
+    </div>`;
+}
+
+function renderWaste(states: Record<string, HaState | null>): string {
+  const now = new Date();
+  type Entry = { date: Date; type: string; days: number };
+  const all: Entry[] = [];
+  for (const cfg of WASTE_SENSORS) {
+    const s = states[cfg.entityId];
+    if (!s?.attributes) continue;
+    for (const key of Object.keys(s.attributes)) {
+      if (!DATE_KEY_RE.test(key)) continue;
+      const date = parseLocalDate(key);
+      const days = daysBetween(now, date);
+      if (days < 0 || days > 21) continue;
+      all.push({ date, type: cfg.label, days });
+    }
+  }
+  all.sort((a, b) => a.date.getTime() - b.date.getTime());
+  const top = all.slice(0, 4);
+
+  let body: string;
+  if (top.length === 0) {
+    body = `<div class="empty">Keine Termine in den nächsten 21 Tagen.</div>`;
+  } else {
+    body = `<ul class="waste-list">` +
+      top.map((u) => {
+        const datePart = u.date.toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit" });
+        const relPart = fmtRelative(u.days, u.date);
+        const cls = u.days <= 1 ? " urgent" : "";
+        return `<li class="waste-item${cls}"><span class="waste-when">${esc(relPart)}</span><span class="waste-sep">·</span><span class="waste-type">${esc(u.type)}</span><span class="waste-date">${esc(datePart)}</span></li>`;
+      }).join("") +
+      `</ul>`;
+  }
+
+  return `
+    <div class="col waste">
+      <div class="section-label">Müllabfuhr</div>
+      ${body}
+    </div>`;
+}
+
 function renderCalendar(eventsByCalendar: Record<string, HaCalendarEvent[]>): string {
-  const all: { start: Date; end: Date; allDay: boolean; summary: string }[] = [];
+  type Norm = { start: Date; end: Date; allDay: boolean; summary: string };
+  const all: Norm[] = [];
   for (const events of Object.values(eventsByCalendar)) {
     for (const ev of events) {
       const dateTime = ev.start?.dateTime ?? null;
@@ -294,14 +301,12 @@ function renderCalendar(eventsByCalendar: Record<string, HaCalendarEvent[]>): st
 
   const today = new Date();
   today.setHours(0, 0, 0, 0);
-  const tomorrowKey = (() => {
-    const t = new Date(today);
-    t.setDate(t.getDate() + 1);
-    return localDateKey(t);
-  })();
   const todayKey = localDateKey(today);
+  const tomorrow = new Date(today);
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  const tomorrowKey = localDateKey(tomorrow);
 
-  const groups = new Map<string, { date: Date; label: string; events: typeof all }>();
+  const groups = new Map<string, { date: Date; label: string; events: Norm[] }>();
   for (const ev of all) {
     const k = localDateKey(ev.start);
     if (!groups.has(k)) {
@@ -314,30 +319,40 @@ function renderCalendar(eventsByCalendar: Record<string, HaCalendarEvent[]>): st
     }
     groups.get(k)!.events.push(ev);
   }
-  const days = Array.from(groups.values()).slice(0, 5);
+  const days = Array.from(groups.values()).slice(0, 4);
 
   if (days.length === 0) {
-    return `<section class="card calendar"><h2>Kalender</h2><div class="empty">Keine Termine in den nächsten 8 Tagen.</div></section>`;
+    return `
+      <section class="calendar">
+        <div class="section-label">Kalender</div>
+        <div class="empty">Keine Termine in den nächsten 8 Tagen.</div>
+      </section>`;
   }
 
-  const cols = days
+  const body = days
     .map((g) => {
       const items = g.events
-        .slice(0, 4)
+        .slice(0, 3)
         .map((ev) => {
-          const time = ev.allDay
-            ? "ganztägig"
-            : `${fmtTime(ev.start)}–${fmtTime(ev.end)}`;
-          return `<li><div class="ev-title">${esc(ev.summary)}</div><div class="ev-time">${esc(time)}</div></li>`;
+          const time = ev.allDay ? "ganztägig" : fmtTime(ev.start);
+          return `<li><span class="cal-time">${esc(time)}</span><span class="cal-title">${esc(ev.summary)}</span></li>`;
         })
         .join("");
-      const more = g.events.length > 4 ? `<li class="more">+${g.events.length - 4} weitere</li>` : "";
-      const dateBadge = `${String(g.date.getDate()).padStart(2, "0")}.${String(g.date.getMonth() + 1).padStart(2, "0")}`;
-      const hilite = g.label === "Heute" ? " day-today" : "";
-      return `<div class="day${hilite}"><div class="day-head"><span>${esc(g.label)}</span><span class="day-num">${esc(dateBadge)}</span></div><ul>${items}${more}</ul></div>`;
+      const more = g.events.length > 3 ? `<li class="cal-more">+${g.events.length - 3}</li>` : "";
+      const isToday = g.label === "Heute";
+      return `
+        <div class="cal-day${isToday ? " cal-day-today" : ""}">
+          <div class="cal-day-label">${esc(g.label)}</div>
+          <ul>${items}${more}</ul>
+        </div>`;
     })
     .join("");
-  return `<section class="card calendar"><h2>Kalender</h2><div class="cal-grid">${cols}</div></section>`;
+
+  return `
+    <section class="calendar">
+      <div class="section-label">Kalender</div>
+      <div class="cal-row">${body}</div>
+    </section>`;
 }
 
 // ─── Page renderer ─────────────────────────────────────────────
@@ -352,131 +367,354 @@ function renderPage(html: string): string {
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Cockpit">
-<title>iPad Cockpit</title>
+<title>Cockpit</title>
 <style>
 * { box-sizing: border-box; margin: 0; padding: 0; }
-html, body { height: 100%; }
+html, body { height: 100%; width: 100%; }
 body {
-  font-family: -apple-system, BlinkMacSystemFont, "Helvetica Neue", Helvetica, Arial, sans-serif;
-  background: #0d1119;
-  background-image:
-    radial-gradient(900px 500px at 50% -10%, rgba(120,150,255,0.08), transparent 65%),
-    radial-gradient(700px 500px at 8% -10%, rgba(255,170,90,0.05), transparent 60%),
-    radial-gradient(700px 500px at 110% 10%, rgba(110,180,255,0.05), transparent 60%);
-  color: #f4f4f6;
+  font-family: -apple-system, "Helvetica Neue", "Segoe UI", Helvetica, Arial, sans-serif;
+  background: #faf7f0;
+  color: #1c1d1f;
   -webkit-text-size-adjust: 100%;
+  -webkit-font-smoothing: antialiased;
   overflow: hidden;
+  font-feature-settings: "kern", "liga";
 }
+
 main {
-  display: -ms-grid;
-  display: grid;
   width: 100vw;
   height: 100vh;
-  padding: 20px;
-  grid-template-columns: 2fr 1fr;
-  grid-template-rows: auto minmax(0, 2.4fr) minmax(0, 2fr) minmax(0, 2fr);
-  grid-gap: 12px;
-}
-header.clock { grid-column: 1 / span 2; padding: 0 4px; }
-.clock .time { font-size: 64px; font-weight: 300; line-height: 1; letter-spacing: -0.03em; font-variant-numeric: tabular-nums; }
-.clock .date { font-size: 14px; color: #9aa1ad; margin-top: 4px; text-transform: capitalize; }
-
-.card {
-  background: rgba(255,255,255,0.04);
-  border: 1px solid rgba(255,255,255,0.06);
-  border-radius: 28px;
-  padding: 20px;
+  padding: 28px 36px 24px;
   display: -webkit-flex;
   display: flex;
   -webkit-flex-direction: column;
   flex-direction: column;
-  min-height: 0;
 }
-.card h2 {
-  font-size: 10px;
+
+/* ─── Masthead (date + time, magazine top bar) ─── */
+.masthead {
+  display: -webkit-flex;
+  display: flex;
+  -webkit-justify-content: space-between;
+  justify-content: space-between;
+  -webkit-align-items: baseline;
+  align-items: baseline;
+  border-bottom: 2px solid #1c1d1f;
+  padding-bottom: 10px;
+  margin-bottom: 6px;
+}
+.masthead-date {
+  font-family: "Charter", "Iowan Old Style", Georgia, "Times New Roman", serif;
+  font-size: 18px;
+  letter-spacing: 0.04em;
   font-weight: 600;
+}
+.masthead-time {
+  font-family: "Charter", Georgia, serif;
+  font-variant-numeric: tabular-nums;
+  font-size: 22px;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+}
+
+/* ─── Section labels (small caps) ─── */
+.section-label {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.22em;
   text-transform: uppercase;
-  letter-spacing: 0.18em;
-  color: #6c727f;
+  color: #7d2a16;
+  margin-bottom: 12px;
+}
+
+/* ─── Hero (Strompreis + Wetter) ─── */
+.hero {
+  display: -webkit-flex;
+  display: flex;
+  -webkit-flex-direction: row;
+  flex-direction: row;
+  -webkit-align-items: stretch;
+  align-items: stretch;
+  padding: 22px 0 24px;
+  border-bottom: 1px solid #d8d4c8;
+}
+.hero-price {
+  -webkit-flex: 1 1 auto;
+  flex: 1 1 auto;
+  min-width: 0;
+  padding-right: 28px;
+}
+.hero-divider {
+  width: 1px;
+  background: #d8d4c8;
+  margin: 0 28px 0 0;
+}
+.hero-weather {
+  -webkit-flex: 0 0 280px;
+  flex: 0 0 280px;
+  display: -webkit-flex;
+  display: flex;
+  -webkit-flex-direction: column;
+  flex-direction: column;
+  -webkit-justify-content: center;
+  justify-content: center;
+}
+.hero-num {
+  font-family: "Charter", "Iowan Old Style", Georgia, "Times New Roman", serif;
+  font-size: 88px;
+  font-weight: 600;
+  line-height: 0.92;
+  letter-spacing: -0.035em;
+  color: #1c1d1f;
+  font-variant-numeric: tabular-nums;
+  margin-bottom: 10px;
+}
+.hero-stats {
+  font-size: 13px;
+  color: #4b4d52;
+  letter-spacing: 0.02em;
+  margin-bottom: 16px;
+  font-variant-numeric: tabular-nums;
+}
+.empty-large {
+  font-family: "Charter", Georgia, serif;
+  font-size: 28px;
+  color: #8d8f96;
+}
+
+/* Heatbar — uniform-height color bands */
+.bars {
+  display: -webkit-flex;
+  display: flex;
+  -webkit-align-items: stretch;
+  align-items: stretch;
+  height: 56px;
+  margin-top: 4px;
+}
+.bar {
+  -webkit-flex: 1 1 0;
+  flex: 1 1 0;
+  margin: 0 1px;
+  border-radius: 1px;
+  position: relative;
+}
+.bar-current {
+  border: 1.5px solid #1c1d1f;
+  margin: -1.5px 1px 0;
+  border-radius: 2px;
+}
+.bar-cheap::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  bottom: -8px;
+  width: 4px;
+  height: 4px;
+  margin-left: -2px;
+  border-radius: 50%;
+  background: #1c1d1f;
+}
+.hour-axis {
+  display: -webkit-flex;
+  display: flex;
+  -webkit-justify-content: space-between;
+  justify-content: space-between;
+  font-size: 10px;
+  color: #8d8f96;
+  padding: 14px 1px 0;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.05em;
+}
+
+/* Weather hero block */
+.weather-temp {
+  font-family: "Charter", "Iowan Old Style", Georgia, "Times New Roman", serif;
+  font-size: 76px;
+  font-weight: 500;
+  line-height: 0.95;
+  letter-spacing: -0.03em;
+  font-variant-numeric: tabular-nums;
   margin-bottom: 8px;
 }
-.card-head { display: flex; -webkit-flex-direction: row; flex-direction: row; -webkit-justify-content: space-between; justify-content: space-between; -webkit-align-items: center; align-items: center; }
-.empty { font-size: 14px; color: #9aa1ad; }
-.sub { font-size: 14px; color: #9aa1ad; margin-top: 6px; }
-.big-num { font-size: 56px; font-weight: 500; line-height: 1.05; font-variant-numeric: tabular-nums; letter-spacing: -0.03em; }
-.unit { font-size: 22px; color: #9aa1ad; margin-left: 8px; }
-.aside { margin-left: auto; font-size: 16px; color: #9aa1ad; font-variant-numeric: tabular-nums; }
-.big-row { display: -webkit-flex; display: flex; -webkit-align-items: baseline; align-items: baseline; }
-.pill { font-size: 12px; color: #9aa1ad; }
-.pill b { color: #5dd47a; font-variant-numeric: tabular-nums; }
-
-/* prices */
-.prices { grid-column: 1; grid-row: 2; }
-.prices-head { display: flex; -webkit-justify-content: space-between; justify-content: space-between; -webkit-align-items: flex-end; align-items: flex-end; margin-bottom: 12px; }
-.prices-head .big-num { font-size: 44px; }
-.prices-stats { font-size: 13px; color: #9aa1ad; text-align: right; }
-.prices-stats b { color: #f4f4f6; font-variant-numeric: tabular-nums; }
-.bars {
-  display: -webkit-flex; display: flex;
-  -webkit-align-items: stretch; align-items: stretch;
-  -webkit-flex: 1 1 auto; flex: 1 1 auto;
-  min-height: 100px;
+.weather-cond {
+  font-family: "Charter", Georgia, serif;
+  font-style: italic;
+  font-size: 18px;
+  color: #4b4d52;
+  margin-bottom: 8px;
 }
-.bar-col { display: -webkit-flex; display: flex; -webkit-flex-direction: column; flex-direction: column; -webkit-justify-content: flex-end; justify-content: flex-end; -webkit-align-items: center; align-items: center; -webkit-flex: 1 1 0; flex: 1 1 0; margin: 0 1px; }
-.star { width: 6px; height: 6px; background: #fff; border-radius: 50%; margin-bottom: 4px; }
-.star-pad { width: 6px; height: 6px; margin-bottom: 4px; }
-.bar { width: 100%; border-radius: 6px; }
-.hour-axis { display: -webkit-flex; display: flex; -webkit-justify-content: space-between; justify-content: space-between; font-size: 10px; color: #5e636e; padding: 6px 4px 0; font-variant-numeric: tabular-nums; }
+.weather-meta {
+  font-size: 13px;
+  color: #4b4d52;
+  font-variant-numeric: tabular-nums;
+}
+.weather-meta span { margin-right: 14px; }
 
-/* weather */
-.weather { grid-column: 2; grid-row: 2; }
-.weather .big-num { font-size: 64px; margin-top: 6px; }
-.weather-extras { display: -webkit-flex; display: flex; -webkit-flex-wrap: wrap; flex-wrap: wrap; gap: 12px; margin-top: 14px; font-size: 13px; color: #9aa1ad; font-variant-numeric: tabular-nums; }
-
-/* live */
-.live { grid-column: 1; grid-row: 3; }
-.live .big-num { font-size: 56px; }
-
-/* waste */
-.waste { grid-column: 2; grid-row: 3; }
-.ws-list { list-style: none; }
-.ws-list li {
-  display: -webkit-flex; display: flex;
-  -webkit-align-items: center; align-items: center;
-  padding: 4px 0;
+/* ─── Mid-row: Verbrauch + Müllabfuhr (two columns) ─── */
+.mid-row {
+  display: -webkit-flex;
+  display: flex;
+  -webkit-flex-direction: row;
+  flex-direction: row;
+  -webkit-align-items: stretch;
+  align-items: stretch;
+  padding: 22px 0 24px;
+  border-bottom: 1px solid #d8d4c8;
+}
+.col {
+  -webkit-flex: 1 1 0;
+  flex: 1 1 0;
+  min-width: 0;
+  padding-right: 28px;
+}
+.col + .col {
+  border-left: 1px solid #d8d4c8;
+  padding-left: 28px;
+  padding-right: 0;
+}
+.col-num {
+  font-family: "Charter", "Iowan Old Style", Georgia, "Times New Roman", serif;
+  font-size: 56px;
+  font-weight: 600;
+  line-height: 0.95;
+  letter-spacing: -0.03em;
+  font-variant-numeric: tabular-nums;
+  margin-bottom: 4px;
+}
+.col-unit {
+  font-family: "Charter", Georgia, serif;
+  font-size: 24px;
+  font-weight: 400;
+  color: #4b4d52;
+  margin-left: 4px;
+}
+.col-sub {
+  font-size: 13px;
+  color: #8d8f96;
+  font-variant-numeric: tabular-nums;
+  margin-bottom: 14px;
+}
+.col-line {
   font-size: 14px;
-  -webkit-justify-content: space-between; justify-content: space-between;
+  color: #4b4d52;
+  margin-top: 6px;
+  font-variant-numeric: tabular-nums;
 }
-.ws-list .bar-tag { display: inline-block; width: 4px; align-self: stretch; min-height: 18px; border-radius: 999px; margin-right: 10px; }
-.ws-list .ws-type { -webkit-flex: 1 1 auto; flex: 1 1 auto; color: #f4f4f6; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.ws-list .ws-rel { color: #9aa1ad; font-variant-numeric: tabular-nums; margin-left: 8px; }
+.col-line b {
+  color: #1c1d1f;
+  font-weight: 600;
+}
 
-/* calendar */
-.calendar { grid-column: 1 / span 2; grid-row: 4; }
-.cal-grid {
-  display: -webkit-flex; display: flex;
-  -webkit-flex-direction: row; flex-direction: row;
-  gap: 10px;
-  -webkit-flex: 1 1 auto; flex: 1 1 auto;
+.empty {
+  font-size: 14px;
+  color: #8d8f96;
+  font-style: italic;
+}
+
+/* Müllabfuhr list */
+.waste-list { list-style: none; }
+.waste-item {
+  display: -webkit-flex;
+  display: flex;
+  -webkit-align-items: baseline;
+  align-items: baseline;
+  padding: 6px 0;
+  border-bottom: 1px solid #ece8da;
+  font-size: 14px;
+  font-variant-numeric: tabular-nums;
+}
+.waste-item:last-child { border-bottom: none; }
+.waste-when {
+  font-weight: 600;
+  color: #1c1d1f;
+  width: 96px;
+  -webkit-flex-shrink: 0;
+  flex-shrink: 0;
+}
+.waste-sep {
+  color: #d8d4c8;
+  margin: 0 8px;
+}
+.waste-type {
+  -webkit-flex: 1 1 auto;
+  flex: 1 1 auto;
+  color: #4b4d52;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.waste-date {
+  color: #8d8f96;
+  font-size: 12px;
+}
+.waste-item.urgent .waste-when { color: #a83020; }
+
+/* ─── Calendar banner ─── */
+.calendar {
+  -webkit-flex: 1 1 auto;
+  flex: 1 1 auto;
+  padding: 22px 0 0;
   min-height: 0;
 }
-.cal-grid .day {
-  -webkit-flex: 1 1 0; flex: 1 1 0;
-  background: rgba(255,255,255,0.03);
-  border-radius: 18px;
-  padding: 10px 12px;
-  min-width: 0;
+.cal-row {
+  display: -webkit-flex;
+  display: flex;
+  -webkit-flex-direction: row;
+  flex-direction: row;
+  -webkit-align-items: stretch;
+  align-items: stretch;
 }
-.cal-grid .day-today { background: rgba(255,255,255,0.08); }
-.day-head { display: flex; -webkit-justify-content: space-between; justify-content: space-between; -webkit-align-items: baseline; align-items: baseline; margin-bottom: 8px; }
-.day-head span:first-child { font-size: 12px; text-transform: uppercase; letter-spacing: 0.1em; color: #9aa1ad; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.day-head .day-num { font-size: 11px; color: #5e636e; font-variant-numeric: tabular-nums; }
-.day-today .day-head span:first-child { color: #f4f4f6; }
-.day ul { list-style: none; }
-.day li { font-size: 12px; line-height: 1.3; margin-bottom: 6px; }
-.day .ev-title { color: #f4f4f6; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.day .ev-time { font-size: 10px; color: #5e636e; font-variant-numeric: tabular-nums; }
-.day .more { font-size: 10px; color: #5e636e; }
+.cal-day {
+  -webkit-flex: 1 1 0;
+  flex: 1 1 0;
+  min-width: 0;
+  padding-right: 22px;
+}
+.cal-day + .cal-day {
+  border-left: 1px solid #d8d4c8;
+  padding-left: 22px;
+}
+.cal-day-label {
+  font-family: "Charter", "Iowan Old Style", Georgia, "Times New Roman", serif;
+  font-size: 17px;
+  font-weight: 600;
+  color: #4b4d52;
+  margin-bottom: 8px;
+  letter-spacing: -0.005em;
+}
+.cal-day-today .cal-day-label { color: #7d2a16; }
+.cal-day ul { list-style: none; }
+.cal-day li {
+  display: -webkit-flex;
+  display: flex;
+  -webkit-align-items: baseline;
+  align-items: baseline;
+  font-size: 13px;
+  line-height: 1.35;
+  padding: 3px 0;
+  color: #1c1d1f;
+}
+.cal-time {
+  width: 56px;
+  -webkit-flex-shrink: 0;
+  flex-shrink: 0;
+  color: #8d8f96;
+  font-variant-numeric: tabular-nums;
+  font-size: 11px;
+}
+.cal-title {
+  -webkit-flex: 1 1 auto;
+  flex: 1 1 auto;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.cal-more {
+  font-size: 11px;
+  color: #8d8f96;
+  font-style: italic;
+  padding-top: 2px;
+}
 </style>
 </head>
 <body>
@@ -490,7 +728,6 @@ ${html}
 // ─── GET handler ───────────────────────────────────────────────
 
 export async function GET() {
-  // calendar whitelist from add-on options
   const calsEnv = process.env.IPAD_CALENDARS_JSON;
   let calendarIds: string[] = [];
   try {
@@ -532,11 +769,9 @@ export async function GET() {
 
   const now = new Date();
   const body =
-    renderClock(now) +
-    renderPrices(prices.today) +
-    renderWeather(weather) +
-    renderLive(states) +
-    renderWaste(states) +
+    renderMasthead(now) +
+    renderHero(prices.today, weather) +
+    `<div class="mid-row">${renderLive(states)}${renderWaste(states)}</div>` +
     renderCalendar(calendars);
 
   return new Response(renderPage(body), {
