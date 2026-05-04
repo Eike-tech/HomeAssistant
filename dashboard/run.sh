@@ -24,6 +24,8 @@ if [ -n "${SUPERVISOR_TOKEN:-}" ]; then
     IPAD_CALENDARS_JSON=$(echo "$ADDON_INFO" | jq -c '.data.options.ipad_calendar_entities // []' 2>/dev/null || echo "[]")
 fi
 export TIBBER_TOKEN
+export HASS_TOKEN
+export IPAD_CALENDARS_JSON
 
 # Get HA external URL from Core API (this is what the browser can reach)
 HASS_URL=""
@@ -44,6 +46,7 @@ fi
 
 # Remove trailing slash
 HASS_URL="${HASS_URL%/}"
+export HASS_URL
 
 # Get Ingress path from Supervisor API
 INGRESS_PATH=""
