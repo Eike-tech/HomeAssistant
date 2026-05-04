@@ -73,7 +73,7 @@ export function WeatherCard() {
           [...Array(6)].map((_, i) => (
             <div
               key={i}
-              className="surface-inset rounded-xl p-2 text-center text-[var(--cockpit-ink-faint)] text-xs"
+              className="surface-inset rounded-xl py-2.5 px-1.5 text-center text-[var(--cockpit-ink-faint)] text-base"
             >
               —
             </div>
@@ -83,15 +83,15 @@ export function WeatherCard() {
           return (
             <div
               key={p.datetime}
-              className="surface-inset rounded-xl py-2 px-1 flex flex-col items-center gap-0.5"
+              className="surface-inset rounded-xl py-2.5 px-1.5 flex flex-col items-center gap-1"
             >
-              <span className="text-[10px] text-[var(--cockpit-ink-faint)] tabular-nums">
+              <span className="text-sm text-[var(--cockpit-ink-dim)] tabular-nums">
                 {String(d.getHours()).padStart(2, "0")}
               </span>
-              <span className="text-base leading-none" aria-hidden>
+              <span className="text-lg leading-none" aria-hidden>
                 {glyph(p.condition)}
               </span>
-              <span className="text-xs text-[var(--cockpit-ink)] tabular-nums">
+              <span className="text-base text-[var(--cockpit-ink)] tabular-nums">
                 {p.temperature !== null && p.temperature !== undefined
                   ? `${Math.round(p.temperature)}°`
                   : "—"}

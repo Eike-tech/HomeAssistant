@@ -54,7 +54,7 @@ export function IpadShell() {
   });
 
   return (
-    <main className="h-screen w-screen overflow-hidden p-5 grid gap-3 grid-cols-[2fr_1fr] grid-rows-[auto_minmax(0,3fr)_minmax(0,1.4fr)_minmax(0,2.2fr)]">
+    <main className="h-screen w-screen overflow-hidden p-5 grid gap-3 grid-cols-[2fr_1fr] grid-rows-[auto_minmax(0,2.4fr)_minmax(0,2fr)_minmax(0,2fr)]">
       <header className="col-span-2 flex items-end justify-between px-1">
         <div>
           <div className="display-num text-[64px] leading-none font-light text-[var(--cockpit-ink)]">

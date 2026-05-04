@@ -95,24 +95,21 @@ export function WasteCard() {
       {upcoming.length === 0 ? (
         <div className="text-sm text-[var(--cockpit-ink-dim)]">Keine Termine in den nächsten 21 Tagen.</div>
       ) : (
-        <ul className="flex flex-col gap-2.5">
+        <ul className="flex flex-col gap-2">
           {upcoming.map((u, i) => (
             <li
               key={`${u.type}-${u.date.toISOString()}`}
-              className="flex items-center gap-3"
+              className="flex items-center gap-2.5"
             >
               <span
-                className="inline-block w-2.5 h-9 rounded-full"
+                className="inline-block w-1 self-stretch rounded-full"
                 style={{ background: u.color, opacity: i === 0 ? 1 : 0.7 }}
                 aria-hidden
               />
-              <div className="flex-1 min-w-0">
-                <div className="text-base text-[var(--cockpit-ink)] truncate">{u.type}</div>
-                <div className="text-xs text-[var(--cockpit-ink-dim)] tabular-nums">
-                  {u.date.toLocaleDateString("de-DE", { weekday: "short", day: "2-digit", month: "2-digit" })}
-                </div>
-              </div>
-              <div
+              <span className="flex-1 min-w-0 text-sm text-[var(--cockpit-ink)] truncate">
+                {u.type}
+              </span>
+              <span
                 className={
                   "text-sm tabular-nums shrink-0 " +
                   (u.daysFromNow <= 1
@@ -120,8 +117,9 @@ export function WasteCard() {
                     : "text-[var(--cockpit-ink-dim)]")
                 }
               >
-                {formatRelative(u.daysFromNow, u.date)}
-              </div>
+                {formatRelative(u.daysFromNow, u.date)} ·{" "}
+                {u.date.toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit" })}
+              </span>
             </li>
           ))}
         </ul>
