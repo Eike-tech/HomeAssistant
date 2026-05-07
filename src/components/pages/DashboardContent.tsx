@@ -1,44 +1,25 @@
 "use client";
 
 import { Header } from "@/components/layout/Header";
-import { DashboardShell } from "@/components/layout/DashboardShell";
 import { EnergyHero } from "@/components/energy/EnergyHero";
-import { SpotpreisHorizont } from "@/components/energy/SpotpreisHorizont";
-import { ParticleFlow } from "@/components/energy/ParticleFlow";
-import { RoomDots } from "@/components/energy/RoomDots";
-import { TeslaCockpit } from "@/components/car/TeslaCockpit";
-import { EnergyOverviewCard } from "@/components/energy/EnergyOverviewCard";
-import { CarOverviewCard } from "@/components/car/CarOverviewCard";
+import { SpotCard } from "@/components/energy/SpotCard";
+import { TeslaCard } from "@/components/car/TeslaCard";
 import { ClimateCard } from "@/components/climate/ClimateCard";
-
-
-import { VacuumCard } from "@/components/vacuum/VacuumCard";
-import { NetworkCard } from "@/components/network/NetworkCard";
-import { HouseholdCard } from "@/components/household/HouseholdCard";
-import { PetsCard } from "@/components/pets/PetsCard";
+import { ConsumersList } from "@/components/energy/ConsumersList";
+import { ScenesGrid } from "@/components/scenes/ScenesGrid";
 
 export function DashboardContent() {
   return (
-    <main className="mx-auto max-w-7xl space-y-5 p-5 md:p-8">
+    <main className="mx-auto max-w-[1400px] space-y-6 p-5 md:p-8">
       <Header />
-      <EnergyHero variant="dashboard" />
-      <TeslaCockpit />
-      <ParticleFlow />
-      <RoomDots />
-      <SpotpreisHorizont />
-      <DashboardShell>
-        <EnergyOverviewCard />
-        <CarOverviewCard />
-        <div className="space-y-5">
-          <ClimateCard />
-          <PetsCard />
-          <VacuumCard />
-        </div>
-        <div className="space-y-5">
-          <NetworkCard />
-          <HouseholdCard />
-        </div>
-      </DashboardShell>
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-12">
+        <div className="md:col-span-8"><EnergyHero /></div>
+        <div className="md:col-span-4"><SpotCard /></div>
+        <div className="md:col-span-6"><TeslaCard /></div>
+        <div className="md:col-span-6"><ClimateCard /></div>
+        <div className="md:col-span-7"><ConsumersList /></div>
+        <div className="md:col-span-5"><ScenesGrid /></div>
+      </div>
     </main>
   );
 }
