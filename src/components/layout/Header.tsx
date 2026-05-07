@@ -1,117 +1,133 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useEntity } from "@/lib/hooks/useEntity";
+import { Cloud, Leaf, Settings } from "lucide-react";
+import { useEntity, useEntityNumericState } from "@/lib/hooks/useEntity";
 import { ENTITIES } from "@/lib/hass/entities";
-import { ConnectionStatus } from "./ConnectionStatus";
 import { SmartAlerts } from "./SmartAlerts";
 import { ThemeToggle } from "./ThemeToggle";
-import { formatTemperature } from "@/lib/utils/formatters";
 
-const weatherIcons: Record<string, string> = {
-  "clear-night": "🌙",
-  cloudy: "☁️",
-  fog: "🌫️",
-  hail: "🌨️",
-  lightning: "⚡",
-  "lightning-rainy": "⛈️",
-  partlycloudy: "⛅",
-  pouring: "🌧️",
-  rainy: "🌧️",
-  snowy: "❄️",
-  "snowy-rainy": "🌨️",
-  sunny: "☀️",
-  windy: "💨",
-  "windy-variant": "💨",
-  exceptional: "⚠️",
+const WEEKDAYS = ["SONNTAG", "MONTAG", "DIENSTAG", "MITTWOCH", "DONNERSTAG", "FREITAG", "SAMSTAG"];
+const MONTHS = ["JANUAR", "FEBRUAR", "MÄRZ", "APRIL", "MAI", "JUNI", "JULI", "AUGUST", "SEPTEMBER", "OKTOBER", "NOVEMBER", "DEZEMBER"];
+
+const weatherDescriptions: Record<string, string> = {
+  "clear-night": "klar",
+  cloudy: "bedeckt",
+  fog: "neblig",
+  hail: "Hagel",
+  lightning: "Gewitter",
+  "lightning-rainy": "Gewitter mit Regen",
+  partlycloudy: "wolkig",
+  pouring: "Regen",
+  rainy: "regnerisch",
+  snowy: "Schnee",
+  "snowy-rainy": "Schnee/Regen",
+  sunny: "sonnig",
+  windy: "windig",
+  "windy-variant": "windig",
+  exceptional: "ungewöhnlich",
 };
 
-function DoorIndicators() {
-  const doorBuero = useEntity(ENTITIES.general.doorBuero);
-  const doorWohnzimmer = useEntity(ENTITIES.general.doorWohnzimmer);
-  const doorSchlafzimmer = useEntity(ENTITIES.general.doorSchlafzimmer);
-  const doorBad = useEntity(ENTITIES.general.doorBad);
-
-  const doors = [
-    { entity: doorBuero, label: "Büro" },
-    { entity: doorWohnzimmer, label: "Wohnzimmer" },
-    { entity: doorSchlafzimmer, label: "Schlafzimmer" },
-    { entity: doorBad, label: "Bad" },
-  ];
-
-  const anyOpen = doors.some((d) => d.entity?.state === "on");
-  if (!doorBuero && !doorWohnzimmer && !doorSchlafzimmer && !doorBad) return null;
-
-  return (
-    <div className="flex items-center gap-1.5">
-      {doors.map((d, i) => {
-        const isOpen = d.entity?.state === "on";
-        return (
-          <div
-            key={i}
-            title={`${d.label}: ${isOpen ? "Offen" : "Geschlossen"}`}
-            className={`h-2 w-2 rounded-full transition-colors ${
-              isOpen ? "bg-red-400 animate-pulse" : "bg-green-400/60"
-            }`}
-          />
-        );
-      })}
-      {anyOpen && <span className="text-[10px] text-red-400 font-medium ml-0.5">Offen</span>}
-    </div>
-  );
+function greetingFor(hour: number): string {
+  if (hour < 5) return "Gute Nacht";
+  if (hour < 11) return "Guten Morgen";
+  if (hour < 14) return "Hallo";
+  if (hour < 18) return "Guten Nachmittag";
+  return "Guten Abend";
 }
 
 export function Header() {
   const [time, setTime] = useState<Date | null>(null);
   const weather = useEntity(ENTITIES.general.weather);
   const person = useEntity(ENTITIES.general.person);
+  const fossil = useEntityNumericState(ENTITIES.energy.fossilShare);
 
   useEffect(() => {
     setTime(new Date());
-    const interval = setInterval(() => setTime(new Date()), 1000);
+    const interval = setInterval(() => setTime(new Date()), 30000);
     return () => clearInterval(interval);
   }, []);
 
-  const weatherIcon = weatherIcons[weather?.state ?? ""] ?? "🌤️";
-  const temp = weather?.attributes?.temperature;
-  const personState = person?.state === "home" ? "Zuhause" : "Unterwegs";
-  const personName = person?.attributes?.friendly_name ?? "";
+  const personName =
+    (person?.attributes?.friendly_name as string | undefined)?.split(" ")[0] ?? "";
+
+  const dateLine = time
+    ? `${WEEKDAYS[time.getDay()]} · ${time.getDate()}. ${MONTHS[time.getMonth()]} ${time.getFullYear()} · ${time.toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" })}`
+    : "—";
+
+  const greeting = time
+    ? `${greetingFor(time.getHours())}${personName ? `, ${personName}` : ""}.`
+    : "Hallo.";
+
+  const tempVal = weather?.attributes?.temperature as number | undefined;
+  const weatherText = weather?.state ? weatherDescriptions[weather.state] ?? weather.state : null;
+  const greenShare = fossil != null ? Math.max(0, Math.round(100 - fossil)) : null;
+  const greenIsHigh = (greenShare ?? 0) >= 50;
 
   return (
     <div className="space-y-3">
-      <header className="flex items-center justify-between px-1 py-2">
-        <div className="flex items-center gap-4">
+      <header
+        className="flex items-end justify-between gap-4 border-b pb-5"
+        style={{ borderColor: "var(--cockpit-edge-soft)" }}
+      >
+        <div>
           <div
-            className="flex items-center gap-3 rounded-full pl-2 pr-4 py-1.5"
+            className="text-[11px] font-medium uppercase tracking-[0.05em]"
+            suppressHydrationWarning
+            style={{ color: "var(--cockpit-ink-dim)" }}
+          >
+            {dateLine}
+          </div>
+          <h1
+            className="mt-1 text-[28px] font-semibold leading-tight tracking-[-0.025em]"
+            suppressHydrationWarning
+            style={{ color: "var(--cockpit-ink)" }}
+          >
+            {greeting}
+          </h1>
+        </div>
+        <div className="flex items-center gap-2">
+          {greenShare != null && (
+            <span
+              className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-medium"
+              style={{
+                background: greenIsHigh
+                  ? "color-mix(in oklch, var(--system-green) 14%, transparent)"
+                  : "color-mix(in oklch, var(--system-yellow) 14%, transparent)",
+                color: greenIsHigh ? "var(--system-green)" : "var(--system-yellow)",
+                border: `1px solid color-mix(in oklch, ${greenIsHigh ? "var(--system-green)" : "var(--system-yellow)"} 28%, transparent)`,
+              }}
+            >
+              <Leaf className="h-3 w-3" strokeWidth={2.2} />
+              {greenShare}% grün
+            </span>
+          )}
+          {tempVal != null && (
+            <span
+              className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-medium"
+              style={{
+                background: "var(--surface-1)",
+                color: "var(--cockpit-ink-dim)",
+                border: "1px solid var(--cockpit-edge-soft)",
+              }}
+            >
+              <Cloud className="h-3 w-3" strokeWidth={2} />
+              {Math.round(tempVal)}°{weatherText ? ` ${weatherText}` : ""}
+            </span>
+          )}
+          <ThemeToggle />
+          <button
+            type="button"
+            aria-label="Einstellungen"
+            className="grid h-9 w-9 place-items-center rounded-[10px] border transition-colors"
             style={{
-              background: "linear-gradient(180deg, oklch(1 0 0 / 0.06), oklch(1 0 0 / 0.02))",
-              boxShadow: "inset 0 1px 0 0 oklch(1 0 0 / 0.08), inset 0 0 0 1px oklch(1 0 0 / 0.04)",
-              backdropFilter: "blur(18px) saturate(140%)",
-              WebkitBackdropFilter: "blur(18px) saturate(140%)",
+              border: "1px solid var(--cockpit-edge-soft)",
+              background: "var(--surface-1)",
+              color: "var(--cockpit-ink-dim)",
             }}
           >
-            <span className="text-2xl leading-none">{weatherIcon}</span>
-            <div className="flex flex-col">
-              <span className="text-[17px] font-semibold tracking-tight leading-tight">
-                {temp !== undefined ? formatTemperature(temp) : "—"}
-              </span>
-              <span className="text-[11px] text-muted-foreground leading-tight">
-                {personName ? `${personName} · ${personState}` : personState}
-              </span>
-            </div>
-          </div>
-          <DoorIndicators />
-        </div>
-
-        <div className="flex items-center gap-5">
-          <ConnectionStatus />
-          <time
-            suppressHydrationWarning
-            className="display-num text-[40px] font-extralight leading-none text-foreground/90"
-          >
-            {time ? time.toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" }) : "\u2014"}
-          </time>
-          <ThemeToggle />
+            <Settings className="h-4 w-4" strokeWidth={1.9} />
+          </button>
         </div>
       </header>
       <SmartAlerts />

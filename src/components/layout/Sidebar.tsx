@@ -1,7 +1,7 @@
 "use client";
 
-import { LayoutDashboard, Zap, History, Bot } from "lucide-react";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { LayoutDashboard, Zap, History, Bot, Home } from "lucide-react";
+import { useHass } from "@/lib/hooks/useHass";
 
 export type Page = "dashboard" | "energie" | "auswertung" | "automationen";
 
@@ -17,72 +17,100 @@ interface SidebarProps {
   onNavigate: (page: Page) => void;
 }
 
+function ConnectionPill() {
+  const { connectionState } = useHass();
+  const ok = connectionState === "connected";
+  const tone = ok
+    ? "var(--system-green)"
+    : connectionState === "connecting"
+      ? "var(--system-yellow)"
+      : "var(--system-red)";
+  const label = ok ? "Verbunden" : connectionState === "connecting" ? "Verbinde …" : "Getrennt";
+  return (
+    <div
+      className="rounded-xl p-3 text-[11px]"
+      style={{ background: "var(--surface-1)", border: "1px solid var(--cockpit-edge-soft)", color: "var(--cockpit-ink-dim)" }}
+    >
+      <div className="mb-0.5 flex items-center gap-1.5">
+        <span className="h-1.5 w-1.5 rounded-full" style={{ background: tone }} />
+        <span style={{ color: tone, fontWeight: 500 }}>{label}</span>
+      </div>
+      <div className="text-[10px]" style={{ color: "var(--cockpit-ink-faint)" }}>
+        homeassistant.local
+      </div>
+    </div>
+  );
+}
+
 export function Sidebar({ activePage, onNavigate }: SidebarProps) {
   return (
     <>
-      {/* Desktop: vertical sidebar */}
-      <nav
-        className="hidden md:flex sticky top-0 h-screen w-[72px] shrink-0 flex-col items-center gap-1.5 pt-6"
+      {/* Desktop: fixed-width vertical sidebar with labels */}
+      <aside
+        className="hidden md:flex sticky top-0 h-screen w-[220px] shrink-0 flex-col gap-1 px-4 py-6"
         style={{
-          background:
-            "linear-gradient(180deg, oklch(1 0 0 / 0.03), oklch(1 0 0 / 0.01))",
-          boxShadow:
-            "inset -1px 0 0 0 oklch(1 0 0 / 0.06), inset 1px 0 0 0 oklch(1 0 0 / 0.02)",
-          backdropFilter: "blur(20px)",
-          WebkitBackdropFilter: "blur(20px)",
+          background: "var(--cockpit-canvas-soft)",
+          borderRight: "1px solid var(--cockpit-edge-soft)",
         }}
       >
-        {navItems.map((item) => {
-          const isActive = activePage === item.id;
-          const Icon = item.icon;
-          return (
-            <Tooltip key={item.id}>
-              <TooltipTrigger asChild>
-                <div
-                  role="button"
-                  tabIndex={0}
-                  onClick={() => onNavigate(item.id)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter" || e.key === " ") onNavigate(item.id);
-                  }}
-                  aria-label={item.label}
-                  aria-current={isActive ? "page" : undefined}
-                  className={`relative flex h-11 w-11 cursor-pointer items-center justify-center rounded-[14px] transition-all duration-200 ease-out ${
-                    isActive
-                      ? "text-foreground scale-[1.02]"
-                      : "text-muted-foreground hover:text-foreground hover:bg-white/[0.06]"
-                  }`}
-                  style={
-                    isActive
-                      ? {
-                          background:
-                            "linear-gradient(180deg, oklch(1 0 0 / 0.14), oklch(1 0 0 / 0.07))",
-                          boxShadow:
-                            "inset 0 1px 0 0 oklch(1 0 0 / 0.12), 0 1px 2px oklch(0 0 0 / 0.35), 0 0 0 1px oklch(1 0 0 / 0.04)",
-                        }
-                      : undefined
-                  }
-                >
-                  <Icon className="h-[18px] w-[18px]" strokeWidth={isActive ? 2.25 : 1.9} />
-                </div>
-              </TooltipTrigger>
-              <TooltipContent side="right" sideOffset={10}>
-                {item.label}
-              </TooltipContent>
-            </Tooltip>
-          );
-        })}
-      </nav>
+        <div className="mb-4 flex items-center gap-2.5 px-2">
+          <div
+            className="grid h-8 w-8 place-items-center rounded-lg"
+            style={{ background: "var(--cockpit-ink)", color: "var(--cockpit-canvas-soft)" }}
+          >
+            <Home className="h-4 w-4" strokeWidth={2} />
+          </div>
+          <div>
+            <div className="text-[13px] font-semibold tracking-tight" style={{ color: "var(--cockpit-ink)" }}>
+              Eikenhof
+            </div>
+            <div className="text-[11px]" style={{ color: "var(--cockpit-ink-dim)" }}>
+              Smart Home
+            </div>
+          </div>
+        </div>
+        <nav className="flex flex-col gap-0.5">
+          {navItems.map((item) => {
+            const isActive = activePage === item.id;
+            const Icon = item.icon;
+            return (
+              <button
+                key={item.id}
+                type="button"
+                onClick={() => onNavigate(item.id)}
+                aria-current={isActive ? "page" : undefined}
+                className="flex items-center gap-2.5 rounded-[10px] px-3 py-2.5 text-[13px] transition-colors"
+                style={
+                  isActive
+                    ? {
+                        background: "var(--surface-1)",
+                        border: "1px solid var(--cockpit-edge-soft)",
+                        color: "var(--cockpit-ink)",
+                        fontWeight: 500,
+                      }
+                    : {
+                        background: "transparent",
+                        border: "1px solid transparent",
+                        color: "var(--cockpit-ink-dim)",
+                      }
+                }
+              >
+                <Icon className="h-4 w-4" strokeWidth={isActive ? 2.1 : 1.8} />
+                <span>{item.label}</span>
+              </button>
+            );
+          })}
+        </nav>
+        <div className="flex-1" />
+        <ConnectionPill />
+      </aside>
 
-      {/* Mobile: bottom tab bar */}
+      {/* Mobile: bottom tab bar (unchanged glass, force-dark gradient stays for mobile glass aesthetic) */}
       <nav
         className="md:hidden fixed bottom-0 left-0 right-0 z-50 flex items-center justify-around px-4 pt-2 pb-[max(env(safe-area-inset-bottom),_0.5rem)]"
         style={{
-          background:
-            "linear-gradient(180deg, oklch(0.14 0.004 260 / 0.7), oklch(0.1 0.004 260 / 0.92))",
-          boxShadow: "inset 0 1px 0 0 oklch(1 0 0 / 0.06)",
-          backdropFilter: "blur(28px) saturate(160%)",
-          WebkitBackdropFilter: "blur(28px) saturate(160%)",
+          background: "var(--cockpit-canvas-soft)",
+          borderTop: "1px solid var(--cockpit-edge-soft)",
         }}
       >
         {navItems.map((item) => {
@@ -94,14 +122,11 @@ export function Sidebar({ activePage, onNavigate }: SidebarProps) {
               onClick={() => onNavigate(item.id)}
               aria-label={item.label}
               aria-current={isActive ? "page" : undefined}
-              className={`flex flex-col items-center gap-0.5 px-4 py-1.5 rounded-xl transition-colors ${
-                isActive ? "text-foreground" : "text-muted-foreground"
-              }`}
+              className="flex flex-col items-center gap-0.5 rounded-xl px-4 py-1.5 transition-colors"
+              style={{ color: isActive ? "var(--cockpit-ink)" : "var(--cockpit-ink-dim)" }}
             >
               <Icon className="h-5 w-5" strokeWidth={isActive ? 2.2 : 1.9} />
-              <span className="text-[10px] font-medium tracking-tight">
-                {item.label}
-              </span>
+              <span className="text-[10px] font-medium tracking-tight">{item.label}</span>
             </button>
           );
         })}
