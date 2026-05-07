@@ -24,6 +24,9 @@ function isDirectAllowed(pathname: string): boolean {
 }
 
 export function middleware(request: NextRequest) {
+  // Dev: allow direct localhost requests (preview / npm run dev) — production unchanged.
+  if (process.env.NODE_ENV !== "production") return NextResponse.next();
+
   const isIngress =
     request.headers.has("x-ingress-path") || request.headers.has("x-hass-source");
   if (isIngress) return NextResponse.next();

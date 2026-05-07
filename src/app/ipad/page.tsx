@@ -6,9 +6,11 @@ import { IpadShell } from "@/components/ipad/IpadShell";
 
 export default function IpadPage() {
   return (
-    <HassProvider>
-      <AmbientAccentMount />
-      <IpadShell />
-    </HassProvider>
+    <div className="dark">
+      <HassProvider>
+        <AmbientAccentMount />
+        <IpadShell />
+      </HassProvider>
+    </div>
   );
 }

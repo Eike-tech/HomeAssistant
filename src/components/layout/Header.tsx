@@ -5,6 +5,7 @@ import { useEntity } from "@/lib/hooks/useEntity";
 import { ENTITIES } from "@/lib/hass/entities";
 import { ConnectionStatus } from "./ConnectionStatus";
 import { SmartAlerts } from "./SmartAlerts";
+import { ThemeToggle } from "./ThemeToggle";
 import { formatTemperature } from "@/lib/utils/formatters";
 
 const weatherIcons: Record<string, string> = {
@@ -110,6 +111,7 @@ export function Header() {
           >
             {time ? time.toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" }) : "\u2014"}
           </time>
+          <ThemeToggle />
         </div>
       </header>
       <SmartAlerts />
