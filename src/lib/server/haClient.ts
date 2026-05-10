@@ -79,3 +79,46 @@ export async function fetchHaCalendarEvents(
     return [];
   }
 }
+
+export interface HaForecastPoint {
+  datetime: string;
+  condition?: string;
+  temperature?: number | null;
+  templow?: number | null;
+  precipitation?: number | null;
+  precipitation_probability?: number | null;
+  wind_speed?: number | null;
+  humidity?: number | null;
+}
+
+/**
+ * Calls weather.get_forecasts via REST (POST /api/services/weather/get_forecasts?return_response=true)
+ * to retrieve a `daily` or `hourly` forecast. Modern HA no longer exposes `forecast` via the entity
+ * state, so this service call is the only REST-friendly path.
+ */
+export async function fetchWeatherForecast(
+  entityId: string,
+  type: "daily" | "hourly" = "daily"
+): Promise<HaForecastPoint[]> {
+  try {
+    const { baseUrl, token } = resolveConfig();
+    const res = await fetch(`${baseUrl}/services/weather/get_forecasts?return_response=true`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ entity_id: entityId, type }),
+      cache: "no-store",
+    });
+    if (!res.ok) return [];
+    const data = (await res.json()) as {
+      service_response?: Record<string, { forecast?: HaForecastPoint[] }>;
+    };
+    const fc = data?.service_response?.[entityId]?.forecast;
+    return Array.isArray(fc) ? fc : [];
+  } catch (err) {
+    console.warn(`[haClient] forecast ${entityId} failed:`, err);
+    return [];
+  }
+}
