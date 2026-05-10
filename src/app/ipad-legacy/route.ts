@@ -47,6 +47,34 @@ interface CalendarCfg {
 }
 const DEFAULT_CAL_COLOR = "#1c1d1f";
 
+// Sensible label + tone defaults for common iCloud calendar entity IDs the user
+// gets after a CalDAV sync. Anything in the user's `ipad_calendar_entities`
+// addon-option that matches by id will pick up label/color from here, so the
+// addon UI can stay a flat string list and still produce nicely tagged events.
+const KNOWN_CALENDARS: Record<string, { label: string; color: string }> = {
+  "calendar.familie":      { label: "Familie",     color: "#a83020" }, // red — close & important
+  "calendar.eike":         { label: "Eike",        color: "#1c1d1f" }, // ink — primary
+  "calendar.privat":       { label: "Privat",      color: "#1c1d1f" },
+  "calendar.arbeit":       { label: "Arbeit",      color: "#3a5a8c" }, // blue — work
+  "calendar.sport":        { label: "Sport",       color: "#2f6b3d" }, // green — outdoor / active
+  "calendar.halbmarathon": { label: "Halbmarathon", color: "#2f6b3d" },
+  "calendar.ziel":         { label: "Ziel",        color: "#2f6b3d" },
+  "calendar.haushalt":     { label: "Haushalt",    color: "#b07a1f" }, // ocker — domestic
+  "calendar.hellofresh":   { label: "HelloFresh",  color: "#b07a1f" },
+  "calendar.geburtstage":  { label: "Geburtstage", color: "#a83020" },
+  "calendar.lokal":        { label: "Lokal",       color: "#a83020" },
+};
+
+function autoCalendarCfg(id: string): CalendarCfg {
+  const known = KNOWN_CALENDARS[id];
+  if (known) return { id, label: known.label, color: known.color };
+  const tail = id.split(".").pop() ?? id;
+  const label = tail
+    .replace(/[_-]+/g, " ")
+    .replace(/\b\w/g, (c) => c.toUpperCase());
+  return { id, label, color: DEFAULT_CAL_COLOR };
+}
+
 function parseCalendarsEnv(raw: string | undefined): CalendarCfg[] {
   if (!raw) return [];
   try {
@@ -55,15 +83,15 @@ function parseCalendarsEnv(raw: string | undefined): CalendarCfg[] {
     return parsed
       .map((entry): CalendarCfg | null => {
         if (typeof entry === "string") {
-          const tail = entry.split(".").pop() ?? entry;
-          const label = tail.charAt(0).toUpperCase() + tail.slice(1);
-          return { id: entry, label, color: DEFAULT_CAL_COLOR };
+          return autoCalendarCfg(entry);
         }
         if (entry && typeof entry === "object") {
           const id = typeof entry.id === "string" ? entry.id : null;
           if (!id) return null;
-          const label = typeof entry.label === "string" ? entry.label : id;
-          const color = typeof entry.color === "string" ? entry.color : DEFAULT_CAL_COLOR;
+          // Rich form: explicit label/color override the KNOWN_CALENDARS defaults.
+          const auto = autoCalendarCfg(id);
+          const label = typeof entry.label === "string" ? entry.label : auto.label;
+          const color = typeof entry.color === "string" ? entry.color : auto.color;
           return { id, label, color };
         }
         return null;
