@@ -15,6 +15,9 @@ const DIRECT_ALLOWED_EXACT = new Set<string>([
   "/ipad-legacy",
   "/favicon.ico",
   "/robots.txt",
+  // Diag endpoint stays available without HA login so we can curl it during incident
+  // response. Returns no secrets (just env-var presence flags and probe results).
+  "/api/diag",
 ]);
 
 function isDirectAllowed(pathname: string): boolean {
