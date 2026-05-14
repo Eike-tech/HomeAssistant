@@ -1,33 +1,77 @@
 // Server-only Home Assistant REST client.
-// Inside the add-on container, prefers the Supervisor core-proxy (`http://supervisor/core/api`)
-// with the auto-injected SUPERVISOR_TOKEN. Outside (local dev), falls back to HASS_URL +
-// HASS_TOKEN.
+//
+// Resolution order for the base URL the Next.js server uses to talk to HA Core:
+//   1. Supervisor core proxy (`http://supervisor/core/api`) when `SUPERVISOR_TOKEN` is
+//      injected by the addon supervisor — this is the only path guaranteed to be
+//      reachable from inside the addon container regardless of the user's HA URL setup.
+//   2. Container-internal HA Core hostname (`http://homeassistant:8123/api`) with the
+//      user-provided `hass_token` — works in any addon network because Docker DNS knows
+//      the `homeassistant` hostname for HA Core. Used as a fallback when the supervisor
+//      proxy isn't available (e.g. SUPERVISOR_TOKEN not in env).
+//   3. Configured `HASS_URL` (last resort — only useful in local dev).
+//
+// `process.env[...]` with a bracketed key prevents Next.js' build-time tree shaker
+// from inlining `undefined` when SUPERVISOR_TOKEN isn't set at build time.
+//
+// Every fetch has an 8 s budget via `AbortSignal.timeout` so that a flaky network
+// degrades the iPad-legacy render to "empty cell" instead of hanging the full request
+// (which used to crash the addon's healthcheck and trigger an endless watchdog restart).
 
 interface HassConfig {
   baseUrl: string;
   token: string;
+  source: string;
 }
 
+let cachedConfig: HassConfig | null = null;
+let loggedSource = false;
+
 function resolveConfig(): HassConfig {
-  const supervisorToken = process.env.SUPERVISOR_TOKEN;
+  if (cachedConfig) return cachedConfig;
+
+  const supervisorToken = process.env["SUPERVISOR_TOKEN"];
+  const hassToken = process.env["HASS_TOKEN"];
+  const hassUrl = process.env["HASS_URL"];
+
   if (supervisorToken) {
-    return { baseUrl: "http://supervisor/core/api", token: supervisorToken };
-  }
-  const hassUrl = process.env.HASS_URL;
-  const hassToken = process.env.HASS_TOKEN;
-  if (!hassUrl || !hassToken) {
+    cachedConfig = {
+      baseUrl: "http://supervisor/core/api",
+      token: supervisorToken,
+      source: "supervisor",
+    };
+  } else if (hassToken) {
+    // Container-internal hostname first — addon network always knows `homeassistant`.
+    // Only fall back to the configured HASS_URL if explicitly different (local dev).
+    const isContainerInternalUrl =
+      !hassUrl || /^http:\/\/(homeassistant|supervisor)(:\d+)?$/.test(hassUrl);
+    cachedConfig = {
+      baseUrl: isContainerInternalUrl
+        ? "http://homeassistant:8123/api"
+        : `${hassUrl!.replace(/\/$/, "")}/api`,
+      token: hassToken,
+      source: isContainerInternalUrl ? "ha-hostname" : "hass_url",
+    };
+  } else {
     throw new Error(
-      "Neither SUPERVISOR_TOKEN nor HASS_URL+HASS_TOKEN configured for server-side HA calls"
+      "No HA token available — set SUPERVISOR_TOKEN (addon) or HASS_TOKEN (local dev)"
     );
   }
-  return { baseUrl: `${hassUrl.replace(/\/$/, "")}/api`, token: hassToken };
+
+  if (!loggedSource) {
+    console.log(`[haClient] base=${cachedConfig.baseUrl} source=${cachedConfig.source}`);
+    loggedSource = true;
+  }
+  return cachedConfig;
 }
+
+const HA_FETCH_TIMEOUT_MS = 8000;
 
 async function haFetch<T>(path: string): Promise<T> {
   const { baseUrl, token } = resolveConfig();
   const res = await fetch(`${baseUrl}${path}`, {
     headers: { Authorization: `Bearer ${token}` },
     cache: "no-store",
+    signal: AbortSignal.timeout(HA_FETCH_TIMEOUT_MS),
   });
   if (!res.ok) {
     throw new Error(`HA ${path}: HTTP ${res.status}`);
@@ -110,6 +154,7 @@ export async function fetchWeatherForecast(
       },
       body: JSON.stringify({ entity_id: entityId, type }),
       cache: "no-store",
+      signal: AbortSignal.timeout(HA_FETCH_TIMEOUT_MS),
     });
     if (!res.ok) return [];
     const data = (await res.json()) as {
