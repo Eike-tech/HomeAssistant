@@ -17,6 +17,17 @@
 // degrades the iPad-legacy render to "empty cell" instead of hanging the full request
 // (which used to crash the addon's healthcheck and trigger an endless watchdog restart).
 
+// Top-level marker — proves to log inspection which haClient version actually loaded
+// inside the container. If you don't see this in `addon logs`, the deployed image is
+// not the one you think it is.
+process.stdout.write(
+  `[haClient] module loaded build=v1.18.2 supTok=${
+    process.env["SUPERVISOR_TOKEN"] ? "yes" : "no"
+  } hassTok=${process.env["HASS_TOKEN"] ? "yes" : "no"} hassUrl=${
+    process.env["HASS_URL"] ?? "(unset)"
+  }\n`
+);
+
 interface HassConfig {
   baseUrl: string;
   token: string;
