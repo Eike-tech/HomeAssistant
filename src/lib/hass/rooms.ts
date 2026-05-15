@@ -36,6 +36,7 @@ export const ROOMS: RoomDef[] = [
       { id: "workstation", label: "Workstation", entityId: ENTITIES.energy.eveEnergy1Power },
       { id: "sonos-buro", label: "Sonos Move", entityId: ENTITIES.energy.sonosMoveBuroPower },
       { id: "netzwerk", label: "Netzwerk", entityId: ENTITIES.energy.netzwerkPower },
+      { id: "bam-bu-binks", label: "Bam Bu Binks", entityId: ENTITIES.energy.bamBuBinksPower },
     ],
   },
   {

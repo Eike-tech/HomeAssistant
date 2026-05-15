@@ -1,6 +1,6 @@
 "use client";
 
-import { Monitor, Tv, Plug, WashingMachine, Snowflake, Router, Utensils, type LucideIcon } from "lucide-react";
+import { Monitor, Tv, Plug, WashingMachine, Snowflake, Router, Utensils, Cpu, type LucideIcon } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useEntity } from "@/lib/hooks/useEntity";
 import { ENTITIES } from "@/lib/hass/entities";
@@ -22,6 +22,7 @@ const CONSUMERS: ConsumerDef[] = [
   { id: "gef", entity: ENTITIES.energy.gefrierschrankPower, label: "Gefrierschrank", room: "Küche", icon: Snowflake },
   { id: "net", entity: ENTITIES.energy.netzwerkPower, label: "Netzwerk", room: "Technik", icon: Router },
   { id: "aus", entity: ENTITIES.energy.shellyPower, label: "Außensteckdose", room: "Garten", icon: Plug },
+  { id: "bbb", entity: ENTITIES.energy.bamBuBinksPower, label: "Bam Bu Binks", room: "Büro", icon: Cpu },
 ];
 
 function useWatts(entityId: string): number | null {

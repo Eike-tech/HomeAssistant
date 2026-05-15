@@ -31,6 +31,7 @@ export const ENTITIES = {
     netzwerkPower: "sensor.shellyplugmg3_08927248e5c0_leistung",
     geschirrspulerPower: "sensor.geschirrspuler_leistung",
     gefrierschrankPower: "sensor.gefrierschrank_leistung",
+    bamBuBinksPower: "sensor.bam_bu_binks_leistung",
     tibberPrice: "sensor.mount_cleltze_strompreis",
     tibberDailyCost: "sensor.tibber_pulse_mount_cleltze_kumulierte_kosten",
     co2Intensity: "sensor.electricity_maps_co2_intensitat",
