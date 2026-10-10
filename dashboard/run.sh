@@ -59,7 +59,7 @@ fi
 log "Starting Dashboard..."
 log "HA URL for browser: ${HASS_URL}"
 log "Token configured: $([ -n "$HASS_TOKEN" ] && echo 'yes' || echo 'NO - configure hass_token in add-on settings!')"
-log "Tibber token: $([ -n "$TIBBER_TOKEN" ] && echo 'yes' || echo 'no (Auswertung wird auf HA Recorder zurückfallen)')"
+log "Tibber token: $([ -n "$TIBBER_TOKEN" ] && echo 'yes' || echo 'no (Spotpreis-Horizont im Cockpit bleibt leer)')"
 
 # Write runtime config for the client (replaces fragile sed-based placeholder system)
 mkdir -p /app/public

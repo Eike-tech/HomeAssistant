@@ -6,7 +6,7 @@ RUN npm ci
 
 COPY src ./src
 COPY public ./public
-COPY next.config.ts tsconfig.json postcss.config.mjs ./
+COPY next.config.ts tsconfig.json ./
 
 # Asset prefix placeholder (replaced at runtime by run.sh)
 # HASS_URL and HASS_TOKEN are loaded at runtime via config.json — no build-time placeholders needed

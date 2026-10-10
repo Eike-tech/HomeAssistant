@@ -1,32 +1,19 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { HassProvider } from "@/lib/hooks/useHass";
-import { AmbientAccentMount } from "@/lib/hooks/useAmbientAccent";
-import { TooltipProvider } from "@/components/ui/tooltip";
-import { Sidebar, type Page } from "@/components/layout/Sidebar";
-import { DashboardContent } from "@/components/pages/DashboardContent";
-import { EnergiePage } from "@/components/pages/EnergiePage";
-import { AuswertungPage } from "@/components/pages/AuswertungPage";
-import { AutomationenPage } from "@/components/pages/AutomationenPage";
+import { TabletShell } from "@/components/tablet/TabletShell";
 
-export default function DashboardPage() {
-  const [activePage, setActivePage] = useState<Page>("dashboard");
+export default function CockpitPage() {
+  // Client-only: theme (sun/clock) and clock text differ between server and
+  // device, so we skip SSR markup instead of risking hydration mismatches.
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+  if (!mounted) return <div style={{ position: "fixed", inset: 0, background: "#05080d" }} />;
 
   return (
     <HassProvider>
-      <AmbientAccentMount />
-      <TooltipProvider>
-        <div className="flex min-h-screen">
-          <Sidebar activePage={activePage} onNavigate={setActivePage} />
-          <div className="flex-1 overflow-y-auto pb-16 md:pb-0">
-            {activePage === "dashboard" && <DashboardContent />}
-            {activePage === "energie" && <EnergiePage />}
-            {activePage === "auswertung" && <AuswertungPage />}
-            {activePage === "automationen" && <AutomationenPage />}
-          </div>
-        </div>
-      </TooltipProvider>
+      <TabletShell />
     </HassProvider>
   );
 }
