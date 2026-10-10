@@ -7,7 +7,7 @@ import { WasteCard } from "./WasteCard";
 import { WeatherCard } from "./WeatherCard";
 import { CalendarCard } from "./CalendarCard";
 
-const DEFAULT_CALENDARS = ["calendar.family"];
+const DEFAULT_CALENDARS = ["calendar.familie"];
 
 function useClock(): Date {
   const [now, setNow] = useState(() => new Date());

@@ -13,46 +13,35 @@ export interface CalendarEvent {
   description?: string;
 }
 
+// Shape returned by the `calendar.get_events` service: start/end are plain strings —
+// ISO date-time for timed events, "YYYY-MM-DD" for all-day events.
 interface RawCalendarEvent {
   summary?: string;
-  start?: { dateTime?: string; date?: string };
-  end?: { dateTime?: string; date?: string };
+  start?: string;
+  end?: string;
   location?: string;
   description?: string;
 }
 
+interface GetEventsResponse {
+  response?: Record<string, { events?: RawCalendarEvent[] }>;
+}
+
+const DATE_ONLY = /^\d{4}-\d{2}-\d{2}$/;
+
 const REFRESH_MS = 10 * 60 * 1000;
 
 function normalize(entityId: string, raw: RawCalendarEvent): CalendarEvent | null {
-  const summary = raw.summary ?? "";
-  const startDateTime = raw.start?.dateTime;
-  const startDate = raw.start?.date;
-  const endDateTime = raw.end?.dateTime;
-  const endDate = raw.end?.date;
-
-  if (startDateTime) {
-    return {
-      entityId,
-      summary,
-      start: startDateTime,
-      end: endDateTime ?? startDateTime,
-      allDay: false,
-      location: raw.location,
-      description: raw.description,
-    };
-  }
-  if (startDate) {
-    return {
-      entityId,
-      summary,
-      start: startDate,
-      end: endDate ?? startDate,
-      allDay: true,
-      location: raw.location,
-      description: raw.description,
-    };
-  }
-  return null;
+  if (!raw.start) return null;
+  return {
+    entityId,
+    summary: raw.summary ?? "",
+    start: raw.start,
+    end: raw.end ?? raw.start,
+    allDay: DATE_ONLY.test(raw.start),
+    location: raw.location,
+    description: raw.description,
+  };
 }
 
 export function useCalendarEvents(
@@ -84,20 +73,23 @@ export function useCalendarEvents(
         const ids = idsKey.split("|").filter(Boolean);
         const all: CalendarEvent[] = [];
 
-        for (const entityId of ids) {
-          try {
-            const result = await connection!.sendMessagePromise<RawCalendarEvent[]>({
-              type: "calendar/list_events",
-              entity_id: entityId,
-              start: start.toISOString(),
-              end: end.toISOString(),
-            });
-            for (const raw of result ?? []) {
-              const ev = normalize(entityId, raw);
-              if (ev) all.push(ev);
-            }
-          } catch (err) {
-            console.warn(`[useCalendarEvents] ${entityId} failed:`, err);
+        // HA has no `calendar/list_events` WS command — use the get_events service with
+        // return_response. One call covers all calendars; the response is keyed by entity.
+        const result = await connection!.sendMessagePromise<GetEventsResponse>({
+          type: "call_service",
+          domain: "calendar",
+          service: "get_events",
+          target: { entity_id: ids },
+          service_data: {
+            start_date_time: start.toISOString(),
+            end_date_time: end.toISOString(),
+          },
+          return_response: true,
+        });
+        for (const [entityId, cal] of Object.entries(result?.response ?? {})) {
+          for (const raw of cal.events ?? []) {
+            const ev = normalize(entityId, raw);
+            if (ev) all.push(ev);
           }
         }
 
