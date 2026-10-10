@@ -12,6 +12,7 @@ ingress: true
 ingress_port: 3000
 panel_icon: mdi:view-dashboard
 panel_title: Dashboard
+panel_admin: false
 homeassistant_api: true
 auth_api: true
 ports:
