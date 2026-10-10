@@ -381,7 +381,7 @@ function WeatherZone() {
 
 // ─── Termine ──────────────────────────────────────────────────
 
-const DEFAULT_CALENDARS = ["calendar.family"];
+const DEFAULT_CALENDARS = ["calendar.familie"];
 const CAL_COLORS = [
   "oklch(0.74 0.13 150)",
   "oklch(0.68 0.17 30)",
