@@ -1,0 +1,121 @@
+/* Tablet Cockpit (Lenovo Tab, 1280×800 landscape) — Ambient Cockpit, Nacht + Tag.
+ * Design: Claude Design canvas "Lenovo Cockpit". Tokens follow docs/design/ambient-cockpit-spec.md. */
+
+.tc {
+  --t-tesla: oklch(0.65 0.22 25);
+  font-family: var(--font-tc-sans), system-ui, sans-serif;
+  background: var(--t-bg);
+  color: var(--t-ink);
+  -webkit-font-smoothing: antialiased;
+  transition: background-color 640ms cubic-bezier(0.22, 1, 0.36, 1), color 640ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.tc.t-nacht {
+  color-scheme: dark;
+  --t-bg: oklch(0.08 0.02 240);
+  --t-ink: oklch(0.97 0 0);
+  --t-inv-fg: oklch(0.12 0.02 240);
+  --t-on-accent: oklch(0.12 0.02 240);
+  --t-dim: oklch(0.68 0.01 250);
+  --t-soft: oklch(0.80 0.01 250);
+  --t-muted: oklch(0.62 0.01 250);
+  --t-idle: oklch(0.45 0.02 220);
+  --t-zone-a: oklch(1 0 0 / 0.05);
+  --t-zone-b: oklch(1 0 0 / 0.012);
+  --t-flat: oklch(1 0 0 / 0.035);
+  --t-fill: oklch(1 0 0 / 0.06);
+  --t-fill-strong: oklch(1 0 0 / 0.09);
+  --t-track: oklch(1 0 0 / 0.1);
+  --t-line: oklch(1 0 0 / 0.35);
+}
+
+.tc.t-tag {
+  color-scheme: light;
+  --t-bg: oklch(0.955 0.008 240);
+  --t-ink: oklch(0.21 0.02 255);
+  --t-inv-fg: oklch(0.98 0.004 240);
+  --t-on-accent: oklch(0.16 0.02 250);
+  --t-dim: oklch(0.46 0.015 255);
+  --t-soft: oklch(0.36 0.015 255);
+  --t-muted: oklch(0.54 0.012 255);
+  --t-idle: oklch(0.78 0.01 240);
+  --t-zone-a: oklch(1 0 0);
+  --t-zone-b: oklch(1 0 0 / 0.7);
+  --t-flat: oklch(1 0 0 / 0.9);
+  --t-fill: oklch(0.21 0.02 255 / 0.06);
+  --t-fill-strong: oklch(0.21 0.02 255 / 0.09);
+  --t-track: oklch(0.21 0.02 255 / 0.12);
+  --t-line: oklch(0.21 0.02 255 / 0.35);
+}
+
+.tc-display {
+  font-family: var(--font-tc-display), system-ui, sans-serif;
+  font-variant-numeric: tabular-nums;
+}
+.tc-mono {
+  font-family: var(--font-tc-mono), ui-monospace, monospace;
+  font-variant-numeric: tabular-nums;
+}
+.tc-caption {
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--t-dim);
+}
+.tc-dim { color: var(--t-dim); }
+.tc-soft { color: var(--t-soft); }
+.tc-muted { color: var(--t-muted); }
+
+.tc-zone {
+  border-radius: 36px;
+  background: radial-gradient(120% 90% at 30% 0%, var(--t-zone-a), var(--t-zone-b) 70%);
+}
+.tc-flat {
+  border-radius: 32px;
+  background: var(--t-flat);
+}
+.tc-fill { background: var(--t-fill); }
+
+.tc-btn {
+  border: 0;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+  background: var(--t-fill-strong);
+  transition: transform 180ms cubic-bezier(0.22, 1, 0.36, 1), background-color 180ms;
+  -webkit-tap-highlight-color: transparent;
+}
+.tc-btn:active { transform: scale(0.96); }
+.tc-btn:disabled { opacity: 0.4; cursor: default; }
+.tc-btn-inv { background: var(--t-ink); color: var(--t-inv-fg); }
+
+.tc-glow {
+  position: absolute;
+  border-radius: 50%;
+  pointer-events: none;
+  background: radial-gradient(closest-side, var(--t-accent-glow), transparent);
+  animation: tc-breathe 8s ease-in-out infinite;
+}
+
+@keyframes tc-breathe {
+  0%, 100% { opacity: 0.55; transform: scale(1); }
+  50% { opacity: 1; transform: scale(1.06); }
+}
+@keyframes tc-ping {
+  0% { transform: scale(1); opacity: 0.8; }
+  100% { transform: scale(3.2); opacity: 0; }
+}
+@keyframes tc-charge {
+  0%, 100% { opacity: 0.35; }
+  50% { opacity: 1; }
+}
+@keyframes tc-page-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: none; }
+}
+.tc-page { animation: tc-page-in 320ms cubic-bezier(0.22, 1, 0.36, 1); }
+
+@media (prefers-reduced-motion: reduce) {
+  .tc-glow, .tc-page { animation: none; }
+}

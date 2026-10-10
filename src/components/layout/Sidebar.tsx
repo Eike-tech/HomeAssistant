@@ -1,6 +1,6 @@
 "use client";
 
-import { LayoutDashboard, Zap, History, Bot, Home } from "lucide-react";
+import { LayoutDashboard, Zap, History, Bot, Home, Tablet } from "lucide-react";
 import { useHass } from "@/lib/hooks/useHass";
 
 export type Page = "dashboard" | "energie" | "auswertung" | "automationen";
@@ -101,6 +101,14 @@ export function Sidebar({ activePage, onNavigate }: SidebarProps) {
             );
           })}
         </nav>
+        <a
+          href="tablet"
+          className="mt-3 flex items-center gap-2.5 rounded-[10px] px-3 py-2.5 text-[13px] transition-colors"
+          style={{ border: "1px solid var(--cockpit-edge-soft)", color: "var(--cockpit-ink-dim)" }}
+        >
+          <Tablet className="h-4 w-4" strokeWidth={1.8} />
+          <span>Tablet-Cockpit</span>
+        </a>
         <div className="flex-1" />
         <ConnectionPill />
       </aside>
