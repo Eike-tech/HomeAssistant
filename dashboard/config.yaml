@@ -1,7 +1,7 @@
 name: Dashboard
-version: "1.19.1"
+version: "1.20.0"
 slug: dashboard
-description: Custom Home Assistant Dashboard with energy, climate, car, and media controls
+description: Tablet cockpit for Home Assistant with energy, car, house and media controls
 url: https://github.com/Eike-tech/HomeAssistant
 image: ghcr.io/eike-tech/homeassistant-dashboard-{arch}
 arch:
@@ -15,10 +15,6 @@ panel_title: Dashboard
 panel_admin: false
 homeassistant_api: true
 auth_api: true
-ports:
-  3000/tcp: 3001
-ports_description:
-  3000/tcp: "Direct LAN access for /ipad-legacy (legacy browsers without HA login)"
 options:
   hass_token: ""
   tibber_token: ""

@@ -8,6 +8,7 @@ import { fmt, hhmm, Icon, num, useNow } from "./shared";
 import { HeuteView } from "./HeuteView";
 import { EnergieView } from "./EnergieView";
 import { HausView, HAUS_LIGHTS } from "./HausView";
+import { AlertsBar } from "./AlertsBar";
 
 type PageId = "heute" | "energie" | "haus";
 const PAGES: { id: PageId; label: string }[] = [
@@ -197,6 +198,8 @@ export function TabletShell() {
             </nav>
           </div>
         </header>
+
+        <AlertsBar />
 
         <div key={page} className="tc-page" style={{ flex: 1, minHeight: 0 }}>
           {page === "heute" && <HeuteView />}
